@@ -68,7 +68,7 @@
   .option input{ margin-top:3px; }
   .navrow{ display:flex; justify-content:space-between; margin-top:26px; }
   .violation-overlay{
-    position:fixed; inset:0; z-index:60;
+    position:fixed; top:0; right:0; bottom:0; left:0; z-index:60;
     background:rgba(27,36,48,0.6);
     display:flex; align-items:center; justify-content:center; padding:20px;
   }
@@ -89,7 +89,7 @@
   .finished-icon{ font-size:2rem; margin-bottom:6px; }
   .note{ font-size:0.8rem; color:var(--ink-soft); margin-top:6px; line-height:1.5; }
   #watermark{
-    position:fixed; inset:0; z-index:40; pointer-events:none;
+    position:fixed; top:0; right:0; bottom:0; left:0; z-index:40; pointer-events:none;
     display:flex; flex-wrap:wrap; align-content:space-around; justify-content:space-around;
     opacity:0.10; overflow:hidden;
   }
@@ -113,6 +113,15 @@
   <div id="screen-done" class="card hidden">
     <h1>Examen ja completat</h1>
     <p class="subtitle">Ja has fet aquest examen des d'aquest dispositiu. Si creus que és un error, parla amb el teu professor/a.</p>
+    <details id="retry-box" class="hidden" style="margin-top:8px;">
+      <summary style="cursor:pointer; color:var(--ink-soft); font-size:0.85rem;">Tinc un codi de reintent</summary>
+      <div style="margin-top:14px;">
+        <label for="input-retry">Codi de reintent</label>
+        <input type="text" id="input-retry" placeholder="Codi de reintent" autocomplete="off">
+        <p class="note" id="retry-error" style="color:var(--red); display:none;">Codi incorrecte, torna-ho a provar.</p>
+        <button id="btn-retry">Continuar</button>
+      </div>
+    </details>
   </div>
 
   <!-- PANTALLA DE CÓDIGO DE ACCESO -->
@@ -187,6 +196,7 @@ const CONFIG = {
   examTitle: "Frens en una BTT - Recuperació",         // Aparece arriba del examen
   modul: "Guia en bicicleta",                          // Nombre de la pestaña en la hoja de resultados
   accessCode: "4181",                          // ✏️ Pon aquí el código (ej. "1234") o déjalo en "" para no pedir código
+  retryCode: "7234",                           // Codi de reintent: el dóna el professor/a per deixar repetir l'examen en un dispositiu que ja l'ha fet. "" = desactivat
   // Envío automático (invisible) del resultado a tu hoja de cálculo vía Apps Script
   appsScriptUrl: "https://script.google.com/macros/s/AKfycbxLJON-0E47AWd_Y7hwi5rx_dYu8M0_hz0l1S9x-mqNXWIh0oOmPzcyZJIwM61DPzit/exec",
   // Conexión con tu Google Form — el resultado se envía solo, sin que el alumno haga nada
@@ -290,6 +300,9 @@ let finished = false;
 let manualFullscreenExit = false;
 let remainingSeconds = CONFIG.timeLimitMinutes * 60;
 let timerInterval = null;
+let startedAt = 0;          // moment d'inici (ms); el temps restant es calcula amb el rellotge real
+let warningPending = false; // hi ha un avís pendent de llegir
+let isRetry = false;        // aquest intent és un reintent autoritzat pel professor/a
 
 // ---------- elementos ----------
 const el = id => document.getElementById(id);
@@ -305,12 +318,72 @@ function showScreen(name){
 // ---------- comprobar si ya se hizo este examen en este dispositivo ----------
 const TEST_MODE = new URLSearchParams(window.location.search).has('test');
 const COMPLETION_KEY = `examen_completat_${slugify(CONFIG.examTitle)}`;
-if(!TEST_MODE && localStorage.getItem(COMPLETION_KEY)){
-  showScreen('done');
-} else if(CONFIG.accessCode){
-  showScreen('code');
-} else {
-  showScreen('start');
+const STATE_KEY = `examen_estat_${slugify(CONFIG.examTitle)}`;
+const RETRY_KEY = `examen_reintent_${slugify(CONFIG.examTitle)}`;
+const VIOLATION_MSG = "Avís: has sortit de la pantalla de l'examen. Si torna a passar, l'examen s'acabarà i s'entregarà automàticament.";
+
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+function lsRemove(k){ try{ localStorage.removeItem(k); }catch(e){} }
+function examLabel(){ return isRetry ? `${CONFIG.examTitle} (reintent)` : CONFIG.examTitle; }
+
+// Només en mode prova: ?test&reset descarta un examen començat i un reintent pendent.
+if(TEST_MODE && new URLSearchParams(window.location.search).has('reset')){
+  lsRemove(STATE_KEY); lsRemove(RETRY_KEY);
+}
+
+// ---------- estat de l'examen: sobreviu a recàrregues de la pàgina ----------
+// El mòbil pot recarregar la pàgina en tornar d'una altra app. Guardant l'estat,
+// l'examen continua (amb el rellotge real) i els avisos no es perden ni es reinicien.
+function saveState(){
+  if(!examActive || finished) return;
+  lsSet(STATE_KEY, JSON.stringify({
+    name: studentName, group: studentGroup, startedAt,
+    order: examQuestions.map(q => CONFIG.questions.indexOf(q)),
+    answers, currentIndex, violations, violationCount, warningPending
+  }));
+}
+function loadState(){
+  try{
+    const s = JSON.parse(lsGet(STATE_KEY));
+    if(s && s.startedAt && Array.isArray(s.order) &&
+       s.order.length === CONFIG.questions.length &&
+       s.order.every(i => CONFIG.questions[i])) return s;
+  }catch(e){}
+  return null;
+}
+function resumeExam(s){
+  studentName = s.name || "";
+  studentGroup = s.group || "";
+  startedAt = s.startedAt;
+  examQuestions = s.order.map(i => CONFIG.questions[i]);
+  answers = s.answers || {};
+  currentIndex = Math.min(s.currentIndex || 0, examQuestions.length - 1);
+  violations = s.violations || [];
+  violationCount = s.violationCount || 0;
+  warningPending = !!s.warningPending;
+  examActive = true;
+  fillWatermark();
+  updateRemaining();
+  if(remainingSeconds <= 0){ submitExam("tiempo agotado"); return; }
+  showScreen('exam');
+  renderQuestion();
+  timerInterval = setInterval(tickTimer, 1000);
+  updateTimerDisplay();
+  if(warningPending && violationCount < CONFIG.violationLimit) showViolationModal(VIOLATION_MSG);
+}
+function initialScreen(){
+  isRetry = !!lsGet(RETRY_KEY);
+  if(!TEST_MODE && lsGet(COMPLETION_KEY)){
+    lsRemove(STATE_KEY);
+    showScreen('done');
+    el('retry-box').classList.toggle('hidden', !CONFIG.retryCode);
+    return;
+  }
+  const saved = loadState();
+  if(saved){ resumeExam(saved); return; }
+  if(CONFIG.accessCode && !isRetry) showScreen('code');
+  else showScreen('start');
 }
 el('btn-code').addEventListener('click', () => {
   const entered = el('input-code').value.trim();
@@ -322,6 +395,24 @@ el('btn-code').addEventListener('click', () => {
 });
 el('input-code').addEventListener('keydown', e => {
   if(e.key === 'Enter') el('btn-code').click();
+});
+
+// ---------- reintent autoritzat pel professor/a ----------
+function tryRetry(){
+  const entered = el('input-retry').value.trim();
+  if(CONFIG.retryCode && entered === String(CONFIG.retryCode)){
+    lsRemove(COMPLETION_KEY);
+    lsRemove(STATE_KEY);
+    lsSet(RETRY_KEY, '1');
+    isRetry = true;
+    showScreen('start');
+  } else {
+    el('retry-error').style.display = 'block';
+  }
+}
+el('btn-retry').addEventListener('click', tryRetry);
+el('input-retry').addEventListener('keydown', e => {
+  if(e.key === 'Enter') tryRetry();
 });
 
 // ---------- pantalla de inicio ----------
@@ -357,12 +448,14 @@ function exitFullscreenSafe(){
 
 function startExam(){
   examQuestions = shuffleArray(CONFIG.questions);
+  startedAt = Date.now();
   fillWatermark();
   enterFullscreenSafe();
   examActive = true;
   showScreen('exam');
   renderQuestion();
   timerInterval = setInterval(tickTimer, 1000);
+  updateRemaining();
   updateTimerDisplay();
 }
 function fillWatermark(){
@@ -376,8 +469,13 @@ function fillWatermark(){
   }
 }
 
+// El temps restant es calcula amb el rellotge real: si el mòbil congela la pàgina
+// en segon pla, el temps continua passant igualment.
+function updateRemaining(){
+  remainingSeconds = CONFIG.timeLimitMinutes * 60 - Math.floor((Date.now() - startedAt) / 1000);
+}
 function tickTimer(){
-  remainingSeconds--;
+  updateRemaining();
   updateTimerDisplay();
   if(remainingSeconds <= 0){
     clearInterval(timerInterval);
@@ -414,6 +512,7 @@ function renderQuestion(){
   el('btn-prev').disabled = currentIndex === 0;
   el('btn-clear').disabled = answers[currentIndex] === undefined;
   el('btn-next').textContent = currentIndex === examQuestions.length - 1 ? "Revisar y entregar" : "Siguiente";
+  saveState();
 }
 el('btn-clear').addEventListener('click', () => { delete answers[currentIndex]; renderQuestion(); });
 el('btn-prev').addEventListener('click', () => { currentIndex--; renderQuestion(); });
@@ -445,7 +544,9 @@ function handleViolation(reason){
   violations.push({ reason, time: new Date().toISOString() });
   violationCount++;
   if(violationCount < CONFIG.violationLimit){
-    showViolationModal("Avís: has sortit de la pantalla de l'examen. Si torna a passar, l'examen s'acabarà i s'entregarà automàticament.");
+    warningPending = true;
+    saveState();
+    showViolationModal(VIOLATION_MSG);
   }
   if(violationCount >= CONFIG.violationLimit){
     submitExam("entregado automáticamente por exceso de salidas de pantalla");
@@ -457,9 +558,13 @@ function showViolationModal(msg){
 }
 el('btn-violation-ok').addEventListener('click', () => {
   el('violation-overlay').classList.add('hidden');
+  warningPending = false;
+  saveState();
 });
 document.addEventListener('visibilitychange', () => {
-  if(examActive && document.hidden) handleViolation("un cambio de pestaña o de aplicación");
+  if(!examActive) return;
+  if(document.hidden) handleViolation("un cambio de pestaña o de aplicación");
+  else if(warningPending) showViolationModal(VIOLATION_MSG);
 });
 window.addEventListener('blur', () => {
   if(examActive) handleViolation("una pérdida de foco de la ventana");
@@ -507,7 +612,7 @@ function maxPossibleScore(){
 
 function buildSummary(score, total, reason){
   const lines = [
-    `Examen: ${CONFIG.examTitle}`,
+    `Examen: ${examLabel()}`,
     `Alumno/a: ${studentName}`,
     studentGroup ? `Grupo: ${studentGroup}` : null,
     `Nota: ${score} / ${total}`,
@@ -523,7 +628,9 @@ function submitExam(reason){
   finished = true;
   examActive = false;
   el('violation-overlay').classList.add('hidden');
-  try{ localStorage.setItem(COMPLETION_KEY, '1'); }catch(e){}
+  lsSet(COMPLETION_KEY, '1');
+  lsRemove(STATE_KEY);
+  lsRemove(RETRY_KEY);
   clearInterval(timerInterval);
   exitFullscreenSafe();
 
@@ -559,7 +666,7 @@ function sendResultAutomatically(score, total, reason){
     return;
   }
   const params = new URLSearchParams({
-    examen: CONFIG.examTitle,
+    examen: examLabel(),
     modul: CONFIG.modul || '',
     nombre: studentName,
     grupo: studentGroup,
@@ -599,6 +706,7 @@ function setupResultActions(summary){
     URL.revokeObjectURL(url);
   };
 }
+initialScreen();
 </script>
 </body>
 </html>
