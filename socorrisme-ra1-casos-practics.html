@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Examen</title>
+<style>
+  :root{
+    --paper: #EEF1F2; --card: #FFFFFF; --ink: #1B2430; --ink-soft: #4A5568; --line: #C9CDD1;
+    --red: #A63D2F; --teal: #3E6259; --teal-soft: #E1EAE7;
+    --serif: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+  *{ box-sizing: border-box; }
+  html,body{ margin:0; padding:0; min-height:100vh; background:var(--paper); color:var(--ink); font-family:var(--sans);
+             -webkit-user-select:none; user-select:none; }
+  #app{ min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:32px 16px 80px; }
+  .card{ width:100%; max-width:720px; background:var(--card); border-top:4px solid var(--red);
+         box-shadow:0 1px 2px rgba(27,36,48,0.08); padding:32px 28px; }
+  .hidden{ display:none !important; }
+  h1{ font-family:var(--serif); font-size:1.6rem; margin:0 0 4px; font-weight:600; }
+  .subtitle{ color:var(--ink-soft); font-size:0.92rem; margin:0 0 24px; line-height:1.5; }
+  label{ display:block; font-size:0.85rem; color:var(--ink-soft); margin-bottom:6px; }
+  input[type=text], textarea{
+    -webkit-user-select:text; user-select:text;
+    width:100%; padding:10px 12px; font-size:1rem; font-family:var(--sans);
+    border:1px solid var(--line); background:#fff; color:var(--ink);
+  }
+  input[type=text]{ margin-bottom:18px; }
+  input[type=text]:focus, textarea:focus{ outline:2px solid var(--teal); outline-offset:1px; }
+  textarea{ resize:vertical; min-height:130px; line-height:1.45; }
+  button{ font-family:var(--sans); font-size:0.95rem; font-weight:600; cursor:pointer; border:none;
+          padding:12px 22px; background:var(--ink); color:#fff; }
+  button:hover{ background:#000; }
+  button.secondary{ background:transparent; color:var(--ink); border:1px solid var(--line); }
+  button.secondary:hover{ background:#f2f2f2; }
+  .row{ display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+  .examheader{ display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--line);
+               padding-bottom:14px; margin-bottom:22px; }
+  .examheader h2{ font-family:var(--serif); font-size:1.1rem; margin:0; }
+  .timer{ font-variant-numeric:tabular-nums; font-size:1.05rem; font-weight:600; }
+  .timer.low{ color:var(--red); }
+  .scenario{ background:var(--teal-soft); border-left:4px solid var(--teal); padding:16px 18px; margin-bottom:26px; line-height:1.55; }
+  .scenario h3{ font-family:var(--serif); font-size:1.15rem; margin:0 0 8px; }
+  .scenario p{ margin:4px 0; }
+  .scenario .cons{ margin-top:12px; font-size:0.9rem; color:var(--ink-soft); }
+  .section{ margin-bottom:22px; }
+  .section .label{ font-weight:700; letter-spacing:0.04em; font-size:0.9rem; color:var(--ink); }
+  .section .hint{ color:var(--ink-soft); font-size:0.85rem; margin:2px 0 8px; line-height:1.45; }
+  .counter{ text-align:right; font-size:0.78rem; color:var(--ink-soft); margin-top:3px; }
+  .counter.max{ color:var(--red); font-weight:600; }
+  .note{ font-size:0.82rem; color:var(--ink-soft); line-height:1.5; margin:6px 0 0; }
+  .err{ color:var(--red); font-size:0.85rem; margin:-8px 0 14px; }
+  #summary-box{ min-height:260px; font-size:0.85rem; background:#fafafa; margin:10px 0 14px; }
+  .actions{ display:flex; gap:10px; flex-wrap:wrap; }
+  .ok{ color:var(--teal); font-weight:600; font-size:0.88rem; }
+  .orient{ border:2px solid var(--teal); background:var(--teal-soft); padding:16px 18px; margin:0 0 20px; }
+  .orient-title{ font-weight:700; letter-spacing:0.06em; font-size:0.85rem; color:var(--teal); }
+  .orient-grade{ font-family:var(--serif); font-size:2.2rem; font-weight:600; margin:4px 0 8px; }
+  .orient-text{ font-size:0.88rem; line-height:1.5; margin:0; color:var(--ink); }
+  .orient ul{ margin:12px 0 0; padding-left:18px; font-size:0.82rem; line-height:1.6; }
+  .testbanner{ background:#FFF4D6; border:1px solid #E5C766; color:#6B5300; font-size:0.82rem; padding:8px 12px; margin:0 0 16px; max-width:720px; width:100%; }
+  .modal, .violation-overlay{ position:fixed; top:0; right:0; bottom:0; left:0; z-index:60; background:rgba(27,36,48,0.6);
+          display:flex; align-items:center; justify-content:center; padding:20px; }
+  .modal-card, .violation-card{ background:#fff; max-width:440px; width:100%; border-top:4px solid var(--red); padding:26px 24px; }
+  .modal-card p, .violation-card p{ font-size:1.05rem; line-height:1.5; margin:0 0 22px; }
+  .modal-actions{ display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
+  #watermark{ position:fixed; top:0; right:0; bottom:0; left:0; z-index:40; pointer-events:none;
+              display:flex; flex-wrap:wrap; align-content:space-around; justify-content:space-around; opacity:0.10; overflow:hidden; }
+  #watermark span{ display:block; transform:rotate(-30deg); font-size:0.95rem; font-weight:600; color:var(--ink); white-space:nowrap; margin:26px; }
+</style>
+</head>
+<body>
+<div id="modal" class="modal hidden">
+  <div class="modal-card">
+    <p id="modal-text"></p>
+    <div class="modal-actions">
+      <button id="modal-cancel" class="secondary">Cancel·la</button>
+      <button id="modal-ok">D'acord</button>
+    </div>
+  </div>
+</div>
+<div id="violation-overlay" class="violation-overlay hidden">
+  <div class="violation-card">
+    <p id="violation-text"></p>
+    <div class="modal-actions"><button id="btn-violation-ok">Ho he llegit</button></div>
+  </div>
+</div>
+<div id="watermark"></div>
+<div id="app">
+  <div id="testbanner" class="testbanner hidden"></div>
+
+  <!-- EXAMEN JA COMPLETAT EN AQUEST DISPOSITIU -->
+  <div id="screen-done" class="card hidden">
+    <h1>Examen ja completat</h1>
+    <p class="subtitle">Ja has fet aquest examen des d'aquest dispositiu. Si creus que és un error, parla amb el teu professor/a.</p>
+    <details id="retry-box" class="hidden" style="margin-top:8px;">
+      <summary style="cursor:pointer; color:var(--ink-soft); font-size:0.85rem;">Tinc un codi de reintent</summary>
+      <div style="margin-top:14px;">
+        <label for="input-retry">Codi de reintent</label>
+        <input type="text" id="input-retry" placeholder="Codi de reintent" autocomplete="off">
+        <p class="note" id="retry-error" style="color:var(--red); display:none;">Codi incorrecte, torna-ho a provar.</p>
+        <button id="btn-retry">Continuar</button>
+      </div>
+    </details>
+  </div>
+
+  <!-- CODI D'ACCÉS -->
+  <div id="screen-code" class="card hidden">
+    <h1>Codi d'accés</h1>
+    <p class="subtitle">Demana el codi al teu professor/a per començar l'examen.</p>
+    <label for="input-code">Codi</label>
+    <input type="text" id="input-code" placeholder="Codi d'accés" autocomplete="off">
+    <p class="note" id="code-error" style="color:var(--red); display:none;">Codi incorrecte, torna-ho a provar.</p>
+    <button id="btn-code">Continuar</button>
+  </div>
+
+  <!-- INICI -->
+  <div id="screen-start" class="card hidden">
+    <img class="logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPgAAADrCAYAAABEk1s+AAAWfmNhQlgAABZ+anVtYgAAAB5qdW1kYzJwYQARABCAAACqADibcQNjMnBhAAAAFlhqdW1iAAAAR2p1bWRjMm1hABEAEIAAAKoAOJtxA3VybjpjMnBhOjE4MzhmMGRmLTZhMDgtNDEyNy05M2E3LTg0MWMwMGQ5MjAyMwAAAAOTanVtYgAAAClqdW1kYzJhcwARABCAAACqADibcQNjMnBhLmFzc2VydGlvbnMAAAAAuGp1bWIAAABEanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5pbmdyZWRpZW50LnYzAAAAABhjMnNofgtdZg9GtlLCaNxAwPF5NAAAAGxjYm9yo2lkYzpmb3JtYXRpaW1hZ2UvcG5namluc3RhbmNlSUR4LHhtcDppaWQ6ZTY3NDEyNGMtYTU2Mi00MGUxLWEwMmQtNGNhNjczMmM5OWVmbHJlbGF0aW9uc2hpcGhwYXJlbnRPZgAAAeJqdW1iAAAAQWp1bWRjYm9yABEAEIAAAKoAOJtxE2MycGEuYWN0aW9ucy52MgAAAAAYYzJzaJan0IgcspPNphRwzEzksmIAAAGZY2JvcqJnYWN0aW9uc4KiZmFjdGlvbmtjMnBhLm9wZW5lZGpwYXJhbWV0ZXJzoWtpbmdyZWRpZW50c4GiY3VybHgtc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5pbmdyZWRpZW50LnYzZGhhc2hYIGBgu2xQvb+1Fn+8SQRZmYf49NgKuxKRIbDuifkXP7H4pGZhY3Rpb254HWNvbS5hbnRocm9waWMuY2xhdWRlLnByb3ZpZGVkanBhcmFtZXRlcnOheB9jb20uYW50aHJvcGljLm9yaWdpbi1jb25maWRlbmNlZ3Vua25vd25rZGVzY3JpcHRpb254ZkNsYXVkZSBwcm92aWRlZCB0aGlzIGZpbGUgYXQgdGhlIHJlcXVlc3Qgb2YgYSB1c2VyIGFuZCBtYXkgaGF2ZSBjcmVhdGVkIG9yIG1vZGlmaWVkIHRoZSBmaWxlIGNvbnRlbnRzLm1zb2Z0d2FyZUFnZW50oWRuYW1lZkNsYXVkZXJhbGxBY3Rpb25zSW5jbHVkZWT1AAAAyGp1bWIAAABAanVtZGNib3IAEQAQgAAAqgA4m3ETYzJwYS5oYXNoLmRhdGEAAAAAGGMyc2iwNyvzKf3XOwi8ib4yqf22AAAAgGNib3KlY2FsZ2ZzaGEyNTZjcGFkTQAAAAAAAAAAAAAAAABkaGFzaFggWOKjYMhVd3bJY1flnIF2VyirSeBjIwRdADXIgiyLqh5kbmFtZW5qdW1iZiBtYW5pZmVzdGpleGNsdXNpb25zgaJlc3RhcnQYIWZsZW5ndGgZFooAAAI+anVtYgAAACdqdW1kYzJjbAARABCAAACqADibcQNjMnBhLmNsYWltLnYyAAAAAg9jYm9ypWNhbGdmc2hhMjU2aXNpZ25hdHVyZXhNc2VsZiNqdW1iZj0vYzJwYS91cm46YzJwYToxODM4ZjBkZi02YTA4LTQxMjctOTNhNy04NDFjMDBkOTIwMjMvYzJwYS5zaWduYXR1cmVqaW5zdGFuY2VJRHgseG1wOmlpZDozZTk2MDhjOC03NmRiLTQ4OTYtOGNlNC1lZTE3NjVlNjllNDlyY3JlYXRlZF9hc3NlcnRpb25zg6JjdXJseC1zZWxmI2p1bWJmPWMycGEuYXNzZXJ0aW9ucy9jMnBhLmluZ3JlZGllbnQudjNkaGFzaFggYGC7bFC9v7UWf7xJBFmZh/j02Aq7EpEhsO6J+Rc/sfiiY3VybHgqc2VsZiNqdW1iZj1jMnBhLmFzc2VydGlvbnMvYzJwYS5hY3Rpb25zLnYyZGhhc2hYIAM28et5mwqScODlNWzynvkPDdpzx928/jraiisn2ELnomN1cmx4KXNlbGYjanVtYmY9YzJwYS5hc3NlcnRpb25zL2MycGEuaGFzaC5kYXRhZGhhc2hYIB+enUiUUngL6VVnfCUn8okcU3+yLwRhq/JJ2FMXMD2odGNsYWltX2dlbmVyYXRvcl9pbmZvo2RuYW1lb0FudGhyb3BpYyBGaWxlc2d2ZXJzaW9uZTEuMC4wa3NwZWNWZXJzaW9uZTIuNC4wAAAQOGp1bWIAAAAoanVtZGMyY3MAEQAQgAAAqgA4m3EDYzJwYS5zaWduYXR1cmUAAAAQCGNib3LShFkCEqIBJhghWQIKMIICBjCCAY2gAwIBAgIUQOWgCu7COdC+uIP6BkIFPWdVEwAwCgYIKoZIzj0EAwMwSTEXMBUGA1UEChMOQW50aHJvcGljLCBQQkMxLjAsBgNVBAMTJUFudGhyb3BpYyBDb250ZW50IENyZWRlbnRpYWxzIFJvb3QgQ0EwHhcNMjYwODA3MTg0MzU2WhcNMjgwODA2MTk0MzU2WjBEMRcwFQYDVQQKEw5BbnRocm9waWMsIFBCQzEpMCcGA1UEAxMgQW50aHJvcGljIENsYXVkZSBDb250ZW50IFNpZ25pbmcwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASYegpry1AYBRTVNL1CpTlbROnY3dey+UrsF9C3phYrATN3ZHf93Mo8RQN0KOUuOn19P4oWNFWe5n2/She9N7eTo1gwVjAOBgNVHQ8BAf8EBAMCB4AwFQYDVR0lBA4wDAYKKwYBBAGD6F4CATAMBgNVHRMBAf8EAjAAMB8GA1UdIwQYMBaAFM5R4gSBTmRbI/jjxM+aPpzB11zCMAoGCCqGSM49BAMDA2cAMGQCMDFzHRSeAXrSy1WOzkbhPZ6Km2wGTmZ/2gK18k8BQGXyqz88Rdrz6CTX9flAnYNVxgIwcF9c3fVhqmJKpi+UhasNUMko69cyX6STPfta3Q8EjyzDjzoyrol46FP6VFHhvUcJoWNwYWRZDZ4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA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" alt="Logo Institut La Bastida" style="width:56px; height:56px; display:block; margin:0 auto 16px;">
+    <h1 id="start-title">Examen</h1>
+    <p class="subtitle" id="start-subtitle"></p>
+    <label for="input-name">Nom i cognoms</label>
+    <input type="text" id="input-name" placeholder="Ex: Marta Garcia López" autocomplete="off">
+    <label for="input-group">Curs</label>
+    <input type="text" id="input-group" placeholder="Ex: GES2A" autocomplete="off">
+    <p id="start-error" class="note hidden" style="color:var(--red); margin:-8px 0 14px;">Cal omplir el nom i el curs.</p>
+    <button id="btn-start">Començar examen</button>
+  </div>
+
+  <!-- EXAMEN -->
+  <div id="screen-exam" class="card hidden">
+    <div class="examheader"><h2 id="exam-title-small"></h2><span class="timer" id="timer">--:--</span></div>
+    <div class="scenario" id="scenario"></div>
+    <div id="sections"></div>
+    <div class="row">
+      <span class="note">Les respostes es guarden automàticament.</span>
+      <button id="btn-finish">Finalitzar i entregar</button>
+    </div>
+  </div>
+
+  <!-- FINAL -->
+  <div id="screen-finished" class="card hidden">
+    <h1>Examen entregat</h1>
+    <p class="subtitle" id="finished-sub"></p>
+    <p class="note" id="finished-status" style="margin:-12px 0 18px;">Enviant el resultat…</p>
+    <button id="btn-resend" class="secondary hidden" style="margin:-6px 0 18px;">Reintenta l'enviament</button>
+    <div id="orient" class="orient hidden">
+      <div class="orient-title">NOTA ORIENTATIVA</div>
+      <div class="orient-grade" id="orient-grade"></div>
+      <p class="orient-text">Aquesta nota és una estimació automàtica feta a partir del text que has escrit i pot no reflectir bé la teva resposta. El professorat revisarà les teves respostes i la nota final pot ser diferent.</p>
+      <ul id="orient-det" class="hidden"></ul>
+    </div>
+    <details>
+      <summary style="cursor:pointer; color:var(--ink-soft); font-size:0.85rem;">Veure les meves respostes (per si falla alguna cosa)</summary>
+      <textarea id="summary-box" readonly></textarea>
+      <div class="actions">
+        <button id="btn-copy" class="secondary">Copia les respostes</button>
+        <button id="btn-download" class="secondary">Descarrega-les (.txt)</button>
+      </div>
+      <p class="ok hidden" id="copy-ok"></p>
+    </details>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   ✏️  PART EDITABLE
+   ============================================================ */
+const CONFIG = {
+  examTitle: "RA 1 - Casos pràctics",   // Surt a dalt de l'examen i a la columna «Examen» del full
+  modul: "Socorrisme",                          // Pestanya del full de resultats
+  accessCode: "4406",                           // Codi d'accés ("" = no demanar codi)
+  retryCode: "8052",                            // Codi de reintent (el dona el professorat). "" = desactivat
+  appsScriptUrl: "https://script.google.com/macros/s/AKfycbxLJON-0E47AWd_Y7hwi5rx_dYu8M0_hz0l1S9x-mqNXWIh0oOmPzcyZJIwM61DPzit/exec",
+  instructions: "Rebràs un cas pràctic. A cada apartat (PROTEGIR, AVISAR, SOCÓRRER) explica què faries i per què. Pots respondre en català o en castellà. Quan comencis, l'examen passarà a pantalla completa: si en surts, rebràs un avís i, a la segona sortida, l'examen s'entregarà automàticament.",
+  timeLimitMinutes: 20,                         // Durada de l'examen
+  violationLimit: 2,                            // 1 avís; a la sortida següent s'entrega sol
+  maxChars: 1500,                               // Màxim de caràcters per apartat
+  showOrientativeGrade: true                    // true = l'alumne veu la nota orientativa en entregar
+};
+const SECTIONS = [
+  { key:'protegir', label:'PROTEGIR', hint:"Què valores i què fas per garantir la seguretat (la teva, la de la víctima i la de l'entorn)?" },
+  { key:'avisar',   label:'AVISAR',   hint:"A qui avises i quina informació dones?" },
+  { key:'socorrer', label:'SOCÓRRER', hint:"Quina valoració i quines actuacions fas a la víctima fins que arribi l'ajuda?" }
+];
+/* ============================================================
+   FI DE LA PART EDITABLE
+   ============================================================ */
+
+/* ===RUBRICS-START=== */
+// ---------- Normalització: minúscules, sense accents, apòstrofs unificats, salts de línia = punt ----------
+function norm(s){
+  return (s||'').toLowerCase()
+    .replace(/ŀ/g,'l·')                 // ŀ -> l·
+    .normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/l\s*[·.]\s*l/g,'l')            // col·locar / col.locar -> colocar
+    .replace(/[’‘`´]/g,"'")
+    .replace(/[\r\n]+/g,'. ')
+    .replace(/\s+/g,' ').trim();
+}
+
+// ---------- Conceptes reutilitzables (text ja normalitzat: sense accents ni majúscules) ----------
+const NO_MOURE = /(\bno\b[^.;]{0,25}\b(mou|moure|moc|mogui|moguis|moguem|movem|mobilitz\w*|desplac\w*|desplaz\w*|trasllad\w*|traslad\w*|treur\w*|sacar|saco|retir\w*|mover|muevo|muevas|movamos|movemos|movilizar|movilizo|movilic\w*|mueva\w*|mueve\w*)|\b(evit\w+|sense|sin)\s+(de\s+)?(moure|mobilitzar|desplacar|traslladar|mover|movilizar|desplazar|trasladar)|immobilitz\w*|inmoviliz\w*)/;
+const NO_MOURE_X = /\bno\b[^.;]{0,25}\b(mou|moure|moc|mogui|moguis|moguem|movem|mobilitz\w*|desplac\w*|desplaz\w*|trasllad\w*|traslad\w*|mover|muevo|muevas|movamos|movemos|movilizar|movilizo|movilic\w*|mueva\w*|mueve\w*)|\b(evit\w+|sense|sin)\s+(de\s+)?(moure|mobilitzar|desplacar|traslladar|mover|movilizar|desplazar|trasladar)/;
+const C = {
+  nomoure: NO_MOURE,
+  nomourex: NO_MOURE_X,
+  risc: /risc|riesg|perill|peligr|insegur|inestab|despreniment|desprendimient|caiguda de pedres|caida de piedras|amenaca|amenaza/,
+  zona: /(asseg|asegur|comprov|comprob|revis|valor|mir|observ|inspeccion|examin|identific|detect|evit|elimin)\w*[^.;]{0,40}(zona|lloc|lugar|entorn|entorno|escenari|escenario|terreny|terreno|area|seguretat|seguridad|perill|peligr|risc|riesg)|zona (segura|assegurada|asegurada)|(lloc|lugar|entorn|entorno|escenari|escenario) (segur|seguro)|senyalitz|senaliz|acordon|delimit|balis/,
+  guants: /guant|guante|mascaret|mascarill|equip de protecc|equipo de protecc|material de protecc|autoprotecc|barrera de protecc|\bepi\b|protecc\w* (personal|individual)|em protegeixo|me protejo|protegir-me|protegerme|protegeixo a mi|me protejo a mi/,
+  r112: /\b112\b|\b061\b|\bsem\b|emergenci|ambulanc|bomber|bombero|\bgrae\b|urgenci|serveis? (medic|sanitari)|servicios? (medico|sanitario)|rescat|salvament|personal sanitari|personal sanitario|toxicolog/,
+  lloc: /lloc exacte|lugar exacto|ubicaci|localitz|localiz|on (som|estic|estem|es troba|ens trobem|ha passat|ha ocorregut|ha succeit)|donde (estoy|estamos|nos encontramos|se encuentra|ha pasado|ha ocurrido)|coordenad|\bgps\b|punt exacte|punto exacto|adreca|direccion|carrer|calle|\bkm\b|quilometre|kilometro|posicio exacta|situacio exacta|referencia|punt de trobada|punto de encuentro|lloc de l'accident|lloc on|lugar donde|lugar del accidente|lloc de l'incident/,
+  prof: /professor|profesor|docent|\bprofe\b|\bgu(ia|ias|ies)\b|responsable|compan(y|er)|monitor(s)? de|organitzaci|organizacion|acompanyant|tutor|coordinador|resta del grup|resto del grupo|equip organitzador/,
+  pls: /\bpls\b|posicio lateral|lateral de seguretat|lateral de seguridad|de costat|de lado|posicio de seguretat|posicion de seguridad/,
+  rcp: /\brcp\b|\bcpr\b|reanimaci|compressi|compresiones|massatge cardiac|masaje cardiaco|toraciques|toracicas|30\s*[:\/x]\s*2|desfibril|\bdea\b|\bdesa\b/,
+  viaAeria: /vias? aer(ia|ea)s?|obrir la via|abrir la via|obertura de (la )?via|apertura de (la )?via|front[- ]?(ment|barbet|barbill|menton)|frente[- ]?(menton|barbilla)|hiperextens|via (aer(ia|ea) )?(oberta|lliure|libre|abierta)|vies respirator|desobstru|obstru|cos estrany|cuerpo extrano|airway/,
+  respira: /respir|ventilaci|\bvos\b|veure[, ]+(oir|escoltar)|ver[, ]+oir|escolt\w+ (si |la )?resp|escuch\w+ (si |la )?resp|\babc\b/,
+  consc: /consci|\brespon(|e|en|d\w*)\b|reacciona|estimul|sacsej|sacud|glasgow|nivell de consci|nivel de consci/,
+  pols: /\bpols\b|pulso|pulsaci|circulaci|constants|constantes|signes vitals|signos vitales|frequencia (cardiaca|respiratoria)|tensio|tension arterial|saturaci|carotid|radial/,
+  vitals: /signes vitals|signos vitales|constants|constantes|monitorit|monitoriz|control\w*[^.;]{0,15}(pols|pulso|respiraci|temperatura|consci)|vigil\w*[^.;]{0,20}(pols|pulso|respiraci|consci|estat|estado|victima|accidentat|constants|signes|alumne|alumno|persona)|(pols|pulso)[^.;]{0,25}(respiraci|respiracion)|(respiraci|respiracion)[^.;]{0,25}(pols|pulso)|saturaci|glasgow/,
+  hemorr: /hemorrag|sagn\w*|sangrad|sangr|pressi\w*|presion\w*|pressionar|presionar|premer|comprimir|compress|torniquet|garrot|apretar|aturar (el |la )?sang|parar (la |el )?sangr/,
+  apositiu: /apositi?s?|apos?it|\bgas(a|es|as)\b|compresa|cobrir|cobrim|cubrir|cubrim|embend|venda|vendaje|\bbena\b|benes|esparadrap|pegat|farmaciola|botiqu|material (de cura|sanitari)/,
+  neteja: /neteja|netej|limpi|lavar|rentar|aigua oxigenada|agua oxigenada|serum|suero|fisiologic|antisept|desinfect|clorhexidina|povidona/,
+  immob: /immobilitz|inmoviliz|immobil|inmovil|\bferula|cabestrell|cabestrillo|embenat|vendaje|vendar|subjectar|sujetar|estabilitz|estabiliz|collaret|collarin|rigid/,
+  fred: /\bfred\b|\bfreda\b|\bfrio\b|\bfria\b|\bgel\b|\bhielo\b|compresa freda|bossa de gel|crioter/,
+  calor: /calor|calent|calient|escalf|abrig|manta|roba seca|ropa seca|isol|aillar|aislar|termica|termic/,
+  hidrat: /hidrat|\baigua\b|\bagua\b|beure|beber|beguda|bebida|liquid|sals minerals|sales minerales|isotonic|serum oral/,
+  ombra: /ombra|ombriv|sombra|\bfresc\b|fresco|resguard|refugi|refugio|a cobert|aire condicionat/,
+  calmar: /calm\w+|tranquil\w*|suport (emocional|psicologic)|apoyo (emocional|psicologico)|psicolog|parl\w+ (amb|con) (ell|ella|la victima|l'alumne|el |la )|habl\w+ con|acompany|acompan|reconfort|confort|tranquiliz/,
+  esperar: /espero|esperar|esperem|esperamos|fins que|hasta que|arribada|arribi|arribin|llegada|llegue|llegan|vingui|vinguin|personal (sanitari|qualificat|cualificado|medic)|sanitari|evacuaci/,
+  abc: /\babc\b|valoraci\w* primar|avaluaci\w* primar|evaluaci\w* primar|exploraci\w* primar|primaria/,
+  secund: /secundari|exploraci|explorar|examen|examin|cap a peus|de pies a cabeza|lesions ocultes|lesiones ocultas|altres lesions|otras lesiones|revis/,
+  lesio: /hematoma|morat|cardenal|ferid|herid|fractura|deformit|lesion|golpe|cop\b|inflam|contusi/
+};
+function or(){
+  return new RegExp(Array.prototype.map.call(arguments, a => (typeof a === 'string' ? C[a].source : a.source)).join('|'));
+}
+// K(etiqueta, punts, grup1, grup2...): un grup és una RegExp (pes = punts/nGrups) o [pes, RegExp, regexpNegacio?]
+function K(label, pts){
+  const gs = Array.prototype.slice.call(arguments, 2);
+  const rr = x => (typeof x === 'string' ? C[x] : x);
+  return { label: label, pts: pts, groups: gs.map(g => Array.isArray(g) ? { w:g[0], re:rr(g[1]), neg:g[2]||null } : { w:pts/gs.length, re:rr(g), neg:null }) };
+}
+function groupHit(g, t){
+  if (!g.neg) return g.re.test(t);
+  // amb negació: es comprova clàusula per clàusula (una clàusula "no ..." no compta)
+  return t.split(/[.;!?]|\bpero\b|\baunque\b|\bsino\b/).some(cl => g.re.test(cl) && !g.neg.test(cl));
+}
+const NEG_DONAR = /\bno\b[^.;,]{0,25}(dono|donar|doni|donem|donaria|doy|dar|daria|dare|dem|beure|beber|ofer|ofrec|hidrat)/;
+
+// ---------- Casos pràctics (21) ----------
+const CASOS = [
+ { id:1, titol:"Precipitat per un barranc", indicis:'Corda trencada.', signes:'Inconscient, respira, fractura oberta.', nota:"Tria tu en quina part del cos té la fractura i indica-ho a la teva resposta.",
+   P:[
+    K("Valora els riscos de l'entorn (despreniments, terreny inestable)",1, or('risc','zona',/pedres|piedras|pedrer|terreny|terreno/)),
+    K('No baixa al barranc si no és segur',1, /(\bno (em |me )?(hi )?(baix|baj|accedeix|accedir|accedo|acceder|descendeix|descendir|desciendo|descender|entr|m'exposo|exposar|expongo|exponer)|\bno (m'hi|me) acost|baixar (nomes )?(si|quan) (es|esta) segur|bajar (solo )?(si|cuando) (es|esta) seguro|(nomes|sols|solament|solo|unicamente) (baixo |bajo )?(si|quan|cuando) (es|esta) segur|si no (es|esta) segur|\b(sense|sin) (baixar|bajar)|abans (de baixar|d'accedir) |no es segur|no es seguro)/),
+    K('No mou la víctima i ho justifica (columna)',1, [0.6, NO_MOURE], [0.4, /(columna|vertebr|lesio|medul|cervical|traumatisme|traumatismo|politrauma|empitjor|empeor|agreuj|agrav)/])
+   ],
+   A:[
+    K('Truca al 112 / emergències',1, 'r112'),
+    K('Indica el lloc exacte',1, or('lloc',/nom del barranc|nombre del barranc|punt exacte|sector|barranc de|barranco de/)),
+    K("Explica l'estat de la víctima i els riscos",1, [0.5,/(inconscien|no (respon|responde|reacciona|es mou|se mueve)|respira|fractura|estat de la (victima|persona)|estado de la (victima|persona)|lesion|ferid|herid|oberta|abierta)/], [0.5, or('risc')])
+   ],
+   S:[
+    K('Comprova la respiració i la via aèria',1, or('respira','viaAeria')),
+    K('Controla la fractura oberta (apòsit estèril, sense pressionar massa)',1.5, [0.5,/(apositi?s?|\bgas(a|es)\b|compresa|cobr\w+|cubr\w+|\btap(o|ar|em)\b|embend\w*|venda|vendaje|\bbena\b|benes|\bcura\b|\bcurar|\bcuro\b)/], [0.5,/(esteril|esteritz|limpi|\bnet\b|\bneta\b|\bnets\b|\bnetes\b)/], [0.5,/\b(sense|sin|no)\b[^.;]{0,25}(pressi|prem|aprem|apret|comprim|presion)/]),
+    K('No mobilitza la víctima (tret que el lloc sigui insegur)',1, [0.7, NO_MOURE], [0.3,/(llevat|tret que|excepte|salvo|(nomes|solament|solo) (si|quan|cuando)|insegur|perill|peligro|risc|riesgo)/]),
+    K('Espera el personal qualificat',0.5, 'esperar')
+   ] },
+
+ { id:2, titol:"Dona caiguda al terra de la cuina", indicis:'Terra mullat.', signes:'Conscient, crida molt.',
+   P:[
+    K('Identifica el risc: terra mullat / relliscós',1, /mullat|mojad|humit|humed|rellisc|resbal|vessat|derram|liquid|aigua|agua|oli\b|aceite/),
+    K('Elimina el risc: eixuga, absorbeix o senyalitza',1, /eixug|\bsec(ar|o|a)\b|\bseco\b|absor|tovall|toalla|fregall|fregona|fregar|baieta|bayeta|paper|drap|trapo|senyalitz|senaliz|cartell|neteja|netej|limpi|retir\w+ (l'aigua|el liquid|el agua)/),
+    K("Evita que algú més rellisqui / s'apropa amb cura",1, or('zona',/(ning\w+|nadie|altres|otros|resta|nens|ninos|gent|gente)[^.;]{0,40}(rellisc|resbal|caig|caiga|acost|acerc)/, /amb cura|con cuidado|precauci|distancia|calcat|calzado|sense relliscar|sin resbalar/))
+   ],
+   A:[
+    K('Valora si cal trucar al 112 segons la gravetat', 1, or('r112',/no cal (trucar|avisar)|no (es )?(cal|necessari|necesario)[^.;]{0,25}(trucar|llamar|ambulanc|112)|si (es|ha estat|fos|sigui) (greu|grave)|segons (la )?gravetat|segun (la )?gravedad|depenent|depend|en funcio de/)),
+    K("Informa de l'estat (caiguda, consciència, dolor, lesions)",1, /caigu|cai(g|da)|dolor|consci|crid|lesion|fractura|ferid|herid/),
+    K('Si és lleu: la deixa reposar i la monitoritza / avisa algú (família, professorat)',1, or(/repos|descans|monitor|vigil|segui|observ/, 'prof', /familiar|famili|marit|marido|parella|pareja|veï|vecino/))
+   ],
+   S:[
+    K('Valora la consciència i la calma (parla amb ella, on li fa mal)',1.5, [0.75,'consc'], [0.75, or('calmar',/dolor|on (li )?fa mal|donde (le )?duele|pregunt/)]),
+    K('Ajuda a seure o incorporar-se amb cura, sense moviments bruscos',1.25, [0.75,/(ajud|ayud|incorpor|asse(u|ur)|sent|sienta|aixec|levant)/], [0.5,/lent|despac|suau|suave|cura\b|cuidado|brusc|pressa|prisa|poc a poc|poco a poco/]),
+    K('Revisa possibles lesions (hematomes, ferides, fractures, deformitats)',1.25, [0.75,'lesio'], [0.5,/revis|explor|comprov|comprob|palp|busc|mir|observ|valor/])
+   ] },
+
+ { id:3, titol:"Home estirat a la platja (orilla)", indicis:'Agafat a una fusta.', signes:'Inconscient, pols dèbil, pell blavosa.',
+   P:[
+    K("Treu la víctima de l'aigua amb precaució (o confirma que ja és fora)",1.5, [1,/(treu|treur|trec|sacar|saco|sac|retir|extra|arrossegu|arrastr|allunyar|alejar|port|llev)\w*[^.;]{0,30}(aigua|agua|mar\b|orilla|riba|platja|playa)|fora de l'aigua|fuera del agua|ja (es|esta) fora|ya esta fuera|a la sorra|en la arena|zona seca/], [0.5,/precauci|cura\b|cuidado|suau|suave/]),
+    K('Assegura la zona (corrents, onades, altres perills)',1, or('zona',/corrent|corriente|onad|\bola\b|\bolas\b|marea|bandera|socorrist|vigilant/)),
+    K('Reconeix la gravetat (cianosi, pols dèbil) i actua ràpid',0.5, /cianos|blav|blau|morat|morad|pols (debil|feble)|pulso (debil|filiforme)|ofeg|ahog|greu|grave|urgent|rapid|immediat|inmediat/)
+   ],
+   A:[
+    K('Truca al 112',1,'r112'),
+    K('Explica: inconscient, pols dèbil',1, [0.5,/inconscien/], [0.5, or('pols')]),
+    K("Explica: quasi-ofegament i l'entorn (platja, aigua)",1, [0.5,/ofeg|ahog|aigua|agua|\bmar\b/], [0.5, or('lloc',/platja|playa|orilla|riba|ubicaci|adreca|direccio/)])
+   ],
+   S:[
+    K('Obre la via aèria (front-barbeta)',1,'viaAeria'),
+    K('Comprova la respiració',1,'respira'),
+    K('Si no respira: RCP immediata',1,'rcp'),
+    K('Si respira amb dificultat: PLS i monitoritza',0.5, [0.25,'pls'], [0.25,/monitor|vigil|control|observ|segui|vitals|constants/]),
+    K('Evita la hipotèrmia (mantes, roba seca)',0.5,'calor')
+   ] },
+
+ { id:4, titol:"Borratxo ensangrentat", indicis:"Agafat a un fanal, intenta aixecar-se, got de cubata trencat.", signes:'Conscient, pols accelerat, ferida oberta.',
+   P:[
+    K("Detecta els vidres trencats i els retira o allunya la víctima",1.5, [1,/vidre|vidrio|got\b|vaso|trencad|rot[oa]s?\b|cristal|esquerd/], [0.5,/allun|aparta|retir|apart|llev|recoll|barr|netej|limp|quitar|alejar/]),
+    K('Evita que caigui: el manté estable / assegut',1, /assegut|sentad|sentar|\bsent|siento|sienta|estable|estabil|recolz|apoy|evit\w+ (que )?(caigui|caiga|es faci mal|caer)|no (el )?deix|sosten|aguant|subjectar|sujet/),
+    K("Autoprotecció (guants) / assegura l'entorn",0.5, or('guants','zona'))
+   ],
+   A:[
+    K("Truca al 112 (segons la gravetat o l'estat)",1, or('r112')),
+    K("Explica l'estat de la ferida",1, /ferid|herid|sagn|sang|hemorr|tall|corte|oberta|abierta/),
+    K("Explica l'estat i el nivell d'intoxicació",1, /alcohol|ebri|borratx|embriag|intoxic|begut|begud|bebid|cubata|ebrio|consci|pols|pulso|beure|beber/)
+   ],
+   S:[
+    K('Controla la ferida: pressió amb drap net / apòsit estèril',1.5, [0.75,'hemorr'], [0.75, or('apositiu','neteja',/\bnet\b|\bneta\b|esteril/)]),
+    K('Avalua la consciència i si respon coherentment',1, [0.6,'consc'], [0.4,/coheren|orient|confus|parla|habla|\bnom\b|nombre|on (es|esta)|donde|data|fecha/]),
+    K('No permet que es mogui: assegut o recolzat',1, /assegut|sentad|recolz|apoy|no (el |li )?(deix|permet|dej|permit)|que no es (mogui|mueva)|quiet|repos|reposo|estirat|tumbad|ajagu/),
+    K('Monitoritza fins que arribi ajuda',0.5, or('vitals','esperar'))
+   ] },
+
+ { id:5, titol:"Apunyalada a la sortida de discoteca", indicis:'Ganivet clavat.', signes:'Inconscient, pols accelerat i dèbil, ferida oberta.',
+   P:[
+    K("Assegura l'escena: que no hi hagi més agressors ni perills",1.5, or('zona',/agressor|atacant|agresor|violenc|violen|policia|mossos|porter|vigilant|escena segura|escenario seguro|perill|peligro|risc|riesgo/)),
+    K("No treu el ganivet (hemorràgia massiva)",1.5, /\bno\b[^.;]{0,35}(trec|treure|treu|retir|extrau|extraer|sacar|saco|toc|arrenc|arranc|mou|moure)[^.;]{0,25}(ganivet|cuchillo|arma|objecte|objeto|element|cos)|(ganivet|cuchillo|arma|objecte|objeto)[^.;]{0,40}(no (es |se )?(treu|retira|toca|mou|extrau)|queda|deix|dej|fix|clavat)|deix\w+ (el )?(ganivet|objecte)|dej\w+ (el )?(cuchillo|objeto)|no (el |lo )?(trec|retir|saco|sacar|treure|extra)/)
+   ],
+   A:[
+    K('Truca al 112 immediatament',1, or('r112',/policia|mossos|guardia civil/)),
+    K("Estat de la víctima (inconscient, pols accelerat i dèbil, xoc)",1, [0.4,/inconscien/], [0.3,'pols'], [0.3,/xoc|shock|hemorrag|sagn|sang|desang/]),
+    K('Ubicació i tipus de ferida (arma blanca)',1, [0.5,'lloc'], [0.5,/arma blanca|ganivet|cuchillo|punyal|apunyal|apunal|ferida (per|d')arma|herida (por )?arma/])
+   ],
+   S:[
+    K('Controla la hemorràgia sense moure el ganivet (pressió al voltant)',1.5, [0.75,'hemorr'], [0.75,/al voltant|alrededor|voltant|sense (moure|treure|tocar)|sin (mover|sacar|tocar)|al costat|a los lados/]),
+    K('Comprova la via aèria i la respiració',1, [0.5,'viaAeria'], [0.5,'respira']),
+    K('Si respira: posició supina i ferida immòbil',0.75, /supin|d'esquena|de espaldas|boca amunt|boca arriba|estirat|tumbad|horitzontal|horizontal|immob|inmovil/),
+    K('Monitoritza signes vitals fins que arribi ajuda',0.75, [0.5,'vitals'], [0.25,'esperar'])
+   ] },
+
+ { id:6, titol:"Home estirat al llit (sobredosi de pastilles)", indicis:'Paquet de pastilles tirat pel terra i pel llit.', signes:'Inconscient, pols accelerat i dèbil, pupil·les dilatades.',
+   P:[
+    K("Retira o assegura les pastilles i substàncies de l'entorn",1.5, [0.75,/pastill|pasti\b|pastis|medicament|medicamento|substanc|sustancia|droga|envas|paquet|caixa|blister|pills?\b/], [0.75,/retir|recull|recoll|guard|allun|aparta|apart|quit|alej|assegur|asegur|treu|sac/]),
+    K('Identifica quines pastilles ha pres (llegeix el paquet)',1, /llegi|leer|\bleo\b|mirar|miro|identific|esbrin|averigu|quin\w* (pastill|medic)|cual\w* (pastill|medic)|quant\w* (pastill|ha pres)|cuant\w* (pastill|ha tomado)|nom del medic|nombre del medic|envas|paquet|caixa|blister|prospect/),
+    K("Assegura la zona / s'autoprotegeix",0.5, or('zona','guants'))
+   ],
+   A:[
+    K('Truca al 112',1,'r112'),
+    K('Explica: sobredosi sospitada de medicaments',1, /sobredosi|sobredosis|intoxic|enverin|envenen|medicament|medicamento|pastill|pastis|ingest|ha (pres|tomat|ingerit)|ha tomado/),
+    K("Estat del pacient (inconscient, pols, pupil·les) i què ha pres",1, [0.4,/inconscien/], [0.3,'pols'], [0.3,/pupil|midriasi|dilatad/])
+   ],
+   S:[
+    K('Comprova la via aèria (front-barbeta)',1,'viaAeria'),
+    K('Si no respira: RCP',1,'rcp'),
+    K("Si respira: PLS (risc d'aspiració en vòmits)",1, [0.7,'pls'], [0.3,/vomit|aspira|broncoaspir|ofeg|ahog/]),
+    K('Monitoritza constantment respiració i pols fins que arribi ajuda',1, [0.5,or('vitals','pols','respira')], [0.5, or(/monitor|vigil|control|constant/, 'esperar')])
+   ] },
+
+ { id:7, titol:"Accident d’escalada: caiguda d'un escalador en una via d’alta muntanya", desc:"Un alumne cau mentre escalava i queda penjat d’una corda en una via a uns 15 metres del terra.", signes:'Inconscient, sagnat visible a la cama.', nota:"Explica l’actuació quan ja han baixat la víctima.",
+   P:[
+    K("Assegura la zona: revisa l'estat de les cordes i l'equipament",1.5, [1,/cord(a|es)|cuerda|equipament|equipamiento|material d'escalada|arnes|anclaj|ancoratg|casc\b|casco|assegurança|aseguramiento|reunio/], [0.5, or('zona','risc')]),
+    K('Evita moure la víctima bruscament (companys)',1.5, [1,NO_MOURE], [0.5,/brusc|cura\b|cuidado|precauci|columna|cervical|suau|suave/])
+   ],
+   A:[
+    K('Truca al 112',1,'r112'),
+    K('Indica accident en zona de difícil accés / alta muntanya',1, /dificil acces|dificil acceso|acces\b|acceso|alta muntanya|alta montana|escalada|paret|pared|muntanya|montana|grae|helicopter|helicopt|cordada/),
+    K("Informa de l'estat (inconscient, sagnat a la cama) i la ubicació",1, [0.4,/inconscien/], [0.3,/sagn|sang|hemorr/], [0.3,or('lloc',/15 metres|15 metros|altura/)])
+   ],
+   S:[
+    K('Valoració primària ABC (via aèria, respiració, circulació)',1.5, [0.5,or('viaAeria','abc')], [0.5,'respira'], [0.5,'pols']),
+    K('Immobilitza / no el mou (columna) i espera els serveis',1, [0.6,NO_MOURE], [0.4,or(/columna|cervical|vertebr/,'esperar')]),
+    K('Controla les hemorràgies (cama)',1,'hemorr'),
+    K('Valoració secundària: examen complet, altres fractures',0.5,'secund')
+   ] },
+
+ { id:8, titol:"Caiguda en bicicleta de muntanya", desc:'Un ciclista perd el control en un camí rocós i cau.', signes:'Conscient, sagnat al cap, dolor intens al braç.',
+   P:[
+    K('Allunya la bicicleta',1, /(allun|aparta|apart|retir|alej|quit|treu|sac)\w*[^.;]{0,25}(bici|bicicleta)|(bici|bicicleta)[^.;]{0,25}(allun|aparta|apart|retir|alej|quit|fora|fuera|lluny|lejos)/),
+    K("Assegura la zona perquè no caiguin altres ciclistes",1.5, or('zona',/(altres|otros|resta|resto|company)[^.;]{0,30}(cicl|caig|caer|caiga|passi|pase|atrope|atropell|xoc|choc|bici)|senyalitz|senaliz/)),
+    K("Autoprotecció (guants) / valora l'entorn",0.5, or('guants','risc'))
+   ],
+   A:[
+    K('Valora el 112 (sagnat greu o dolor que impedeix moure)',1, or('r112',/si (el )?sagnat (es )?greu|si (es|és) greu|segons la gravetat|depend/)),
+    K('Informa: sagnat al cap, dolor al braç, ubicació',1, [0.35,/sagn|sang|hemorr/], [0.35,/bra[cz]o?|dolor|fractura/], [0.3,'lloc']),
+    K('Avisa professorat / companys',1,'prof')
+   ],
+   S:[
+    K("Valoració primària (ABC) abans d'actuar sobre la fractura",1, [0.5,or('abc')], [0.5,or('consc','respira','viaAeria','pols')]),
+    K('Immobilitza el braç (fractura sospitada)',1,'immob'),
+    K('Neteja la ferida del cap amb aigua / material de la farmaciola',1, [0.6,or('neteja')], [0.4,or('hemorr','apositiu')]),
+    K('Valoració secundària: signes vitals i informació',1, [0.5,'vitals'], [0.5,/secundari|historia|antecedents|alergi|medicaci|pregunt|on li fa mal|donde le duele/])
+   ] },
+
+ { id:9, titol:"Ofegament en un riu durant una activitat de caiac", desc:"Un alumne cau del caiac en un ràpid i és arrossegat pel corrent.", signes:'Inconscient, no respira.', nota:"Explica l’actuació quan la víctima ja està fora de l’aigua.",
+   P:[
+    K('Verifica que el rescat és segur per als socorristes',1.5, [1, or('risc','zona',/segur|seguro|seguretat|seguridad/)], [0.5,/rescat|rescate|rescatador|socorrist/]),
+    K('Utilitza cordes o altres mètodes de seguretat',1, /cord(a|es)|cuerda|llanca|lanzar|perxa|pertiga|salvavides|flotador|barca|embarcaci|caiac|kayak|material de rescat|bossa de llancament|bolsa de lanzamiento/),
+    K('Autoprotecció (guants, mascareta de RCP)',0.5,'guants')
+   ],
+   A:[
+    K('Truca al 112 immediatament',1,'r112'),
+    K("Avisa professorat / responsables de l'activitat",1,'prof'),
+    K('Indica on són i què ha passat (riu, ràpids, ofegament)',1, [0.5,'lloc'], [0.5,/riu\b|rio\b|rapid|ofeg|ahog|caiac|kayak|aigua|agua/])
+   ],
+   S:[
+    K('Comprova si respira i la via aèria (aigua)',1, [0.5,'respira'], [0.5,'viaAeria']),
+    K('Inicia RCP immediatament si no respira',1.5, [1,'rcp'], [0.5,/30\s*[:\/x]|ventilaci|insufl|boca a boca|respiracions|5 insufl|cinc insufl/]),
+    K("Controla hemorràgies i l'estat neurològic",0.5, or('hemorr','consc',/neurolog/)),
+    K('Continua fins que arribi ajuda / DEA; valoració secundària si recupera la consciència',1, [0.5,/recupera|consci|secundari/], [0.5,/\bdea\b|\bdesa\b|desfibril|fins que|hasta que|arribi|llegue|continu|seguir|segueixo/])
+   ] },
+
+ { id:10, titol:"Caiguda des d’un penya-segat durant una ruta de senderisme", desc:"Un alumne es desvia del camí i cau per un desnivell de 5 metres.", signes:'Conscient, amb possible fractura de cama i immobilitzat.',
+   P:[
+    K("Evita acostar-se al límit del penya-segat",1.5, /(no|evit|sense|sin)[^.;]{0,25}(acost|acerc|apropar|aproxim|vora|borde|limit|marge|caure|caer)|limit|vora\b|borde|penya|acantilado|cingle|desnivell|desnivel/),
+    K("Assegura la zona amb cordes (protegeix l'equip)",1.5, [0.75,/cord(a|es)|cuerda|arnes|assegur\w+ amb|asegur\w+ con|anclaj|ancoratg/], [0.75, or('zona','risc')])
+   ],
+   A:[
+    K('Avisa el professorat / responsable de la sortida',1,'prof'),
+    K("Truca als serveis d'emergència",1,'r112'),
+    K('Explica la localització exacta',1,'lloc')
+   ],
+   S:[
+    K('Revisa la farmaciola (benes, fèrules, aigua oxigenada)',1, /farmaciola|botiqu|aigua oxigenada|agua oxigenada|benes|vendas|ferula|material/),
+    K('Valoració primària (ABC)',1, or('abc','consc','respira','viaAeria','pols')),
+    K("Immobilitza la cama i no mou la víctima",1.5, [0.75,'immob'], [0.75,NO_MOURE_X]),
+    K('Valoració secundària: examen físic detallat (lesions ocultes)',0.5,'secund')
+   ] },
+
+ { id:11, titol:"Atac d’asma durant una cursa d'orientació", desc:"Un alumne amb historial d’asma comença a tenir dificultats per respirar enmig de la cursa.", signes:'Dificultat respiratòria, respiració sibilant.',
+   P:[
+    K("Retira l'alumne de l'esforç / atura l'activitat",1.5, /(retir|allun|aparta|apart|alej|treu|atur|para|parar|detin|deten|descans|repos)\w*[^.;]{0,30}(cursa|esforc|esfuerzo|activitat|actividad|carrera|zona|exercici|ejercicio|alumne|alumno)|deixa de (correr|fer|moure)|dejar de|para de correr|cessar|cese/),
+    K('Ambient adequat (aire net, ombra, sense al·lèrgens, lloc tranquil)',1, /aire|ventil|fresc|fresco|ombra|sombra|alergen|polen|fum\b|humo|polvo|lloc tranquil|lugar tranquilo/),
+    K('Assegura la zona',0.5,'zona')
+   ],
+   A:[
+    K("Truca al 112 si no millora amb l'inhalador",1.5, [1,'r112'], [0.5,/no (millora|mejora|remet|cede)|si (empitjora|empeora|continua|persist)|sense millora|sin mejora/]),
+    K('Informa: asma, dificultat respiratòria, sibilants',1, /asma|sibil|dificultat respir|dificultad respir|ofeg|ahog|falta d'aire|falta de aire/),
+    K('Avisa professorat / organització',0.5,'prof')
+   ],
+   S:[
+    K('Valoració primària (ABC): prioritza la respiració',1, or('respira','viaAeria','abc')),
+    K("L'ajuda a utilitzar el seu inhalador",1.5, [1,/inhalador|inhalacion|ventolin|salbutamol|puff|broncodilat|medicaci\w+ (habitual|propia)|seu medicament|su medicaci/], [0.5,/ajud|ayud|facilit|busc|agafar|coger|portar|trobar|encontr|agita|sacsej|cambra|camara/]),
+    K('Posició semiasseguda i vigilància constant',1, [0.7,/semi.?assegu|semi.?sentad|incorpor|assegut|sentad|posicio (comoda|de confort|tripode)|recolzat|apoyad/], [0.3,/vigil|monitor|control|observ|segui/]),
+    K('Calma i suport psicològic (valoració secundària)',0.5,'calmar')
+   ] },
+
+ { id:12, titol:"Caiguda en una excursió d’hivern (neu)", desc:"Un alumne rellisca en una zona amb neu i es fa mal al canell.", signes:'Conscient, dolor al canell, sagnat lleu.',
+   P:[
+    K('Marca/senyalitza la zona perquè no rellisquin altres',1.5, [0.75,/senyalitz|senaliz|marc|bali|cinta|cartell|bastons?|bastones/], [0.75, or('zona',/rellisc|resbal|glac|placa|gel\b|hielo/)]),
+    K("Evita l'accés d'altres a la zona relliscosa",1, /(ning\w+|nadie|altres|otros|resta|resto|company)[^.;]{0,40}(accedeixi|acced|passi|pase|entri|entre|acosti|acerque|rellisc|resbal)|\bno\b[^.;]{0,15}(accedeixi|accedir|acceda|passi|pase|entri|entre|acosti|acerque)|(accedeixi|acceda|passi|pase|entri|entre|acosti|acerque)[^.;]{0,25}(ning\w+|nadie|altres|otros)|no (deix|permet|dej)|evit\w+ (que )?(altres|otros|accedeixi|passi)|acces\b|acceso/),
+    K('Allunya la víctima de la zona perillosa / la protegeix del fred',0.5, or(/allun|apart|lloc segur|zona segura/,'calor'))
+   ],
+   A:[
+    K('Valora el 112 si sospita fractura greu',1.5, [1,'r112'], [0.5,/fractura|greu|grave/]),
+    K('Avisa professorat / guies',1,'prof'),
+    K('Informa de la lesió i la ubicació',0.5, [0.25,/canell|muneca/], [0.25,'lloc'])
+   ],
+   S:[
+    K('Immobilitza el canell (prioritat)',1.5,'immob'),
+    K('Cobreix / neteja la ferida lleu',0.75, or('apositiu','neteja')),
+    K('Aplica fred a la zona',0.5,'fred'),
+    K('Vigila pols i hemorràgies',0.5, or('pols','hemorr')),
+    K('Abriga per prevenir hipotèrmia',0.75,'calor')
+   ] },
+
+ { id:13, titol:"Caminada en alta muntanya amb marejos per mal d’altura", desc:"Durant una ascensió a 3.000 metres, un alumne presenta marejos, mal de cap intens i nàusees.", signes:'Confusió mental, nàusees, mal de cap.',
+   P:[
+    K('Descendeix immediatament a una altitud menor',2, /desc[ei]nd|descens|\bbaix(ar|em|o|a)\b|\bbaj(ar|amos|o|a)\b|menor altitud|menys altitud|menor altura|perdre altitud|perder altura|abaixar/),
+    K("Atura l'ascensió / l'activitat",0.5, /atur|\bpar(em|o|ar|amos|a)\b|detin|deten|interromp|interrump|suspen|cancel|no (continu|segu|pugem|pujar|subir|sigu)/),
+    K('No deixa sol la víctima / valora el risc',0.5, /\bsol\b|solo|acompany|acompan|company|risc|riesg/)
+   ],
+   A:[
+    K('Truca al 112 si els símptomes persisteixen',1.5, [1,'r112'], [0.5,/si (els )?(simptomes|sintomas)|persist|no (millora|mejora)|empitjor|empeor/]),
+    K('Avisa professorat / guies',1,'prof'),
+    K('Informa símptomes i ubicació / altitud',0.5, [0.25,/confusi|mareig|mareo|nausea|cap\b|cabeza|mal d'altura|mal de altura/], [0.25,or('lloc',/3000|3\.000|altitud|altura/)])
+   ],
+   S:[
+    K('Valoració primària: respiració i oxigenació',1, or('respira','abc',/oxigen|saturaci/)),
+    K('Examina símptomes (confusió, nàusees) i dóna confort',1, [0.5,/confusi|consc|nausea|mal de cap|cefale|mareig|mareo/], [0.5,'calmar']),
+    K('Hidratació i repòs',1.5, [0.75,'hidrat'], [0.75,/repos|descans|quiet|reposo/]),
+    K("Té en compte l'ansietat / oxigen si n'hi ha",0.5, /oxigen|ansiet|ansied|estres|nervi|emocional/)
+   ] },
+
+ { id:14, titol:"Deshidratació severa en una excursió a l’estiu", desc:"Un alumne pateix fatiga extrema i desorientació després de diverses hores sota el sol.", signes:'Pell seca, confusió, marejos.',
+   P:[
+    K("L'allunya de l'exposició directa al sol",1.5, /(allun|retir|treu|treur|sacar|apart|traslad|port|llev|mov|mou)\w*[^.;]{0,40}(sol\b|ombra|sombra|fresc|fresco)|exposici\w+ (directa|al sol)|sol directe|sol directo/),
+    K('El porta a una zona ombrívola / fresca',1, 'ombra'),
+    K("Assegura la zona / l'entorn",0.5, or('zona','risc'))
+   ],
+   A:[
+    K('Truca al 112 si la deshidratació és severa',1.5, [1,'r112'], [0.5,/sever|greu|grave|no (millora|mejora)|confusi|desorient/]),
+    K('Avisa professorat / companys',1,'prof'),
+    K('Informa estat i lloc',0.5, [0.25,/confusi|desorient|pell seca|piel seca|marej|mareo|fatiga/], [0.25,'lloc'])
+   ],
+   S:[
+    K("Rehidrata amb petites quantitats d'aigua (hidratació controlada)",1.5, [1, 'hidrat', NEG_DONAR], [0.5,/poc a poc|petit|sorb|trago|pocs|control|gradual|glops|pequen|poco a poco/]),
+    K('Aigua freda al front / refresca',0.75, /fred|fria\b|frio\b|mullar|mojar|refresc|front\b|frente|nuca|coll\b|cuello|panys|panos|pano\b|tovallola|toalla/),
+    K('Controla consciència, pols i respiració',1, or('consc','pols','respira')),
+    K('Monitoritza signes vitals / valoració secundària',0.75, or('vitals',/temperatura|secundari/))
+   ] },
+
+ { id:15, titol:"Al·lèrgia a una picada d'insecte durant una ruta de BTT", desc:"Un alumne és picat per una vespa i comença a tenir dificultats respiratòries.", signes:'Inflor al coll, dificultat per respirar.',
+   P:[
+    K("L'allunya de la zona on pugui haver més insectes",2, /(allun|aparta|apart|retir|alej|treu|sac|moure|mou)\w*[^.;]{0,30}(insect|vespa|abella|abeja|avispa|niu|nido|zona|lloc|lugar)|(insect|vespa|abella|abeja|avispa|niu|nido)[^.;]{0,30}(allun|lluny|lejos|zona)|evit\w+ (noves|mes|mas|otras) pic/),
+    K("Assegura la zona / l'entorn",0.5,'zona'),
+    K('Autoprotecció / evita noves picades',0.5, or('guants',/pic|picad|aguijon/))
+   ],
+   A:[
+    K("Truca al 112 immediatament (sobretot si no hi ha autoinjector)",1.5, [1,'r112'], [0.5,/autoinjector|autoinyector|epinefrin|adrenalin/]),
+    K('Informa: reacció al·lèrgica, inflor al coll, dificultat respiratòria',1, /alerg|anafil|inflor|hinchaz|\bcoll\b|cuello|gola|garganta|dificultat respir|dificultad respir|ofeg|ahog/),
+    K('Avisa professorat i dóna la ubicació',0.5, or('prof','lloc'))
+   ],
+   S:[
+    K('Valora la via aèria (inflor)',1, or('viaAeria','respira','abc')),
+    K("Administra o ajuda a administrar l'autoinjector d'epinefrina",1.5, [1,/autoinjector|autoinyector|epinefrin|adrenalin|epipen|jext|altellus|auto-?injector/], [0.5,/ajud|ayud|administr|punx|pinch|clav|cuixa|muslo|part externa|lateral/]),
+    K('Monitoritza fins que arribin els serveis mèdics',0.75, or('vitals','esperar',/monitor|vigil/)),
+    K('Valoració secundària: altres reaccions, confort',0.75, or('calmar',/secundari|reaccion|urticaria|picor/))
+   ] },
+
+ { id:16, titol:"Hipotèrmia durant una activitat d’alta muntanya", desc:"Un alumne no porta roba adequada i es comença a sentir confús i tremola.", signes:'Tremolor, confusió, pell pàl·lida.',
+   P:[
+    K('El porta a un refugi o zona coberta, protegida del vent',2, /refugi|refugio|cobert|cubiert|protegi\w* (del )?(vent|viento|fred|frio)|tenda|tienda|cabana|cabana|resguard|sota (un )?(arbre|roca|sostre)|lloc (tancat|protegit)|lugar (cerrado|protegido)|del vent|del viento/),
+    K('Col·loca els abrics dels companys',1, /abric|abrigo|jaqueta|chaqueta|anorac|forro|polar|roba|ropa|manta|company/)
+   ],
+   A:[
+    K('Truca al 112 si no millora ràpidament',1.5, [1,'r112'], [0.5,/no (millora|mejora)|empitjor|empeor|persist|rapid/]),
+    K('Avisa el professorat',1,'prof'),
+    K('Informa del lloc i dels símptomes',0.5, [0.25,/tremol|temblor|confusi|pal|hipoterm/], [0.25,'lloc'])
+   ],
+   S:[
+    K('Valoració primària: respiració i signes d’hipotèrmia avançada',1, or('respira','consc','abc',/hipoterm|avancad|avanzad/)),
+    K('Escalfa progressivament (mantes, roba seca)',1.5, [0.75,'calor'], [0.75,/progressiv|gradual|poc a poc|poco a poco|lentament|lentamente|mantes|mantas|roba seca|ropa seca/]),
+    K('Dóna begudes calentes (si és conscient)',0.75, /beguda|bebida|infusi|brou|caldo|xocolat|chocolate|te calent|te caliente|liquids? calent|liquido caliente/),
+    K('Monitoritza signes vitals; reflexió sobre la roba adequada',0.75, [0.5,'vitals'], [0.25,/roba adequada|ropa adecuada|prevenc|prevenci|importancia/])
+   ] },
+
+ { id:17, titol:"Fractura de clavícula durant una caiguda a cavall", desc:"Un alumne cau d’un cavall i es queixa de dolor intens a l’espatlla.", signes:"Deformitat a l'espatlla, dolor intens.",
+   P:[
+    K("Manté l'alumne immòbil",1.5,'nomoure'),
+    K('Allunya la víctima del cavall / assegura la zona',1.5, or(/(allun|aparta|apart|retir|alej|lluny|lejos|sac|treu|fora de l|lejos del)\w*[^.;]{0,30}(cavall|caballo|animal|zona|perill|peligro|risc)|(cavall|caballo|animal)[^.;]{0,30}(allun|lluny|lejos|apart|fora|fuera|controlat|sujet|subjectat|lligat|atado)/, 'zona'))
+   ],
+   A:[
+    K('Truca al 112',1.5,'r112'),
+    K('Informa: deformitat a l’espatlla, dolor intens, caiguda del cavall',1, [0.5,/deformit|espatlla|hombro|clavicul|fractura/], [0.5,/dolor|cavall|caballo|caigud|caida|lloc/]),
+    K('Avisa el professorat',0.5,'prof')
+   ],
+   S:[
+    K('Controla respiració i signes de xoc',1.25, [0.6,'respira'], [0.65,/xoc|shock|pols|pulso|circulaci|pal\b|suor|sudor/]),
+    K('Immobilitza el braç (cabestrell improvisat)',1.5,'immob'),
+    K('Assegura que no hi ha altres lesions (valoració secundària)',0.75, /altres lesions|otras lesiones|secundari|exploraci|explorar|examen|cap a peus|descart|revis/),
+    K('Monitoritza i manipula amb cura',0.5, /monitor|vigil|control|cura\b|cuidado|suau|suave|brusc|precauci/)
+   ] },
+
+ { id:18, titol:"Ferida per tall durant una activitat de supervivència", desc:"Un alumne es talla mentre utilitza un ganivet en una activitat de supervivència.", signes:'Tall profund a la mà, sagnat important.',
+   P:[
+    K("Assegura que no hi ha més objectes tallants a prop",1.5, [0.75,/ganivet|cuchillo|navalla|navaja|objectes? tallants?|objetos? cortantes?|eina|herramienta/], [0.75,/retir|allun|aparta|guard|assegur|asegur|recoll|quit|alej|llev/]),
+    K('Assegura la zona',1, or('zona','risc')),
+    K("Autoprotecció: es posa guants abans de curar",0.5,'guants')
+   ],
+   A:[
+    K("Truca al 112 si el sagnat no s'atura amb pressió",1.5, [1,'r112'], [0.5,/no (s'atura|para|cessa|cede|deixa|se detiene|se detenga|se para|cesa)|si (el )?(sagnat|sangrado)|persist|greu|grave|important|abundant/]),
+    K("Avisa el professorat / responsable de l'activitat",1,'prof'),
+    K('Informa: tall profund a la mà, sagnat',0.5, [0.25,/tall|corte|ferid/], [0.25,/sagn|sang|\bma\b|mano|lloc/])
+   ],
+   S:[
+    K('Controla l’hemorràgia amb pressió directa',1.5, [1,/pressi|presion|premer|presionar|apretar|compress/], [0.5,or('apositiu',/\bnet\b|limpi|esteril/)]),
+    K('Eleva la mà',0.75, /elev|alca\b|alcar|aixec|levant|per sobre del cor|por encima del corazon/),
+    K("Neteja la ferida / apòsit net",0.75, or('neteja','apositiu')),
+    K('Verifica altres talls o lesions ocultes',0.5, /altres (talls|lesions|ferides)|otros cortes|otras lesiones|secundari|ocult|revis|explor/),
+    K('Torniquet només si cal / vigila signes de xoc',0.5, /torniquet|garrot|xoc|shock|desmai|desmay|pal\b|lipotim|mareig|mareo/)
+   ] },
+
+ { id:19, titol:"Convulsions en una ruta en bicicleta", desc:"Un alumne pateix una convulsió mentre fa bicicleta.", signes:'Moviments incontrolats, inconscient.',
+   P:[
+    K('El col·loca en una zona segura, lluny de la carretera i d’obstacles',2, [1.5, or(/(lluny|lejos|allun|apart|retir|alej)\w*[^.;]{0,30}(carretera|cotxe|coche|trafic|obstacl|obstaculo|perill|peligro|risc|riesgo|vorera|acera)|vorera|cuneta|carril|transit|trafic/, 'zona')], [0.5,/bici|bicicleta|casc|casco|objectes?|objetos?/]),
+    K("Assegura la zona / avisa el trànsit",0.5,'zona'),
+    K('Autoprotecció (guants)',0.5,'guants')
+   ],
+   A:[
+    K('Truca al 112 immediatament',1.5,'r112'),
+    K('Avisa el professorat',1,'prof'),
+    K('Informa: convulsió, durada, inconscient, ubicació',0.5, [0.25,/convuls|ataque|epilep|durada|duracion/], [0.25,'lloc'])
+   ],
+   S:[
+    K('Controla el temps que duren les convulsions',1, /temps|tiempo|durada|duracion|minut|minuto|cronometr|rellotge|reloj|segons|segundos/),
+    K('No el subjecta durant la convulsió; evita que es faci mal',1, /(no|sense|sin)[^.;]{0,30}(subjecta|sujeta|aguanta|aguant|immobilitz|inmoviliz|reten|conten|sostin|frena|mou|moure|mover)|cap\b|cabeza|casc|casco|coixi|cojin|roba sota|ropa bajo|(res|nada) a la boca|(res|nada) en la boca|no (li )?(posi|ponga|fico|meto)/),
+    K('Via aèria oberta i PLS després de la convulsió',1.5, [0.75,'pls'], [0.75, or('viaAeria','respira')]),
+    K('Història mèdica (epilèpsia, medicació) / valoració secundària',0.5, /historia|antecedent|epilep|diabet|medicaci|malaltia|enfermedad|alergi|pregunt|secundari|informaci/)
+   ] },
+
+ { id:20, titol:"Cop de calor durant una ruta a peu en ple estiu", desc:"Un alumne pateix un cop de calor després d’hores sota el sol.", signes:'Pell calenta, confusió, marejos.',
+   P:[
+    K('El retira del sol immediatament',1.5, /(retir|treu|treur|allun|aparta|apart|sac|port|traslad|llev|mou|moure|mover)\w*[^.;]{0,40}(sol\b|ombra|sombra|fresc|fresco)|ombra|sombra|ombriv/),
+    K('El porta a un lloc fresc',1,'ombra'),
+    K('Assegura la zona',0.5,'zona')
+   ],
+   A:[
+    K('Truca al 112 si no millora',1.5, [1,'r112'], [0.5,/no (millora|mejora)|empitjor|empeor|persist|greu|grave|fatal|mortal|urgent/]),
+    K('Avisa el professorat',1,'prof'),
+    K('Informa: pell calenta, confusió, i el lloc',0.5, [0.25,/calent|caliente|confusi|temperatura|hipertermia|febre|fiebre/], [0.25,'lloc'])
+   ],
+   S:[
+    K('Comprova respiració i signes de xoc',1, or('respira','pols','consc',/xoc|shock/)),
+    K("Refreda el cos: aigua freda, mullar, ventilar",1.5, /fred|fria\b|frio\b|mullar|mojar|refresc|ventil|abanic|abanico|panys|panos|compreses|gel\b|hielo|axil|aixelle|engonal|ingle/),
+    K('Dóna aigua de forma gradual',1, [0.7,'hidrat',NEG_DONAR], [0.3,/gradual|poc a poc|sorbs|petit|poco a poco|glops|pequen/]),
+    K('Controla la temperatura / afluixa la roba',0.5, /temperatura|termometre|termometro|treure (la )?roba|quitar (la )?ropa|afluix|aflojar|despullar|desvestir/)
+   ] },
+
+ { id:21, titol:"Luxació de turmell durant una carrera de muntanya", desc:"Un alumne es torça el turmell durant una cursa i no pot continuar.", signes:'Dolor intens, inflamació al turmell.',
+   P:[
+    K('Evita que continuï caminant sobre el turmell lesionat',2, /(no|evit|sense|sin|deixa de|dejar de|atur|para\b|parar|impedir)[^.;]{0,30}(camin|andar|recolz|apoy|carregar|cargar|peu|pie\b|pes\b|peso|continu|seguir|moure|mover|cursa|carrera|corre)|aturar la cursa|parar la carrera|no (pot|puede) (camin|continuar|seguir)|repos|seure|sentar|asseu|sient/),
+    K('Assegura la zona / el treu del recorregut',1, or('zona',/(lluny|lejos|apart|allun|fora|fuera|vorera|marge)\w*[^.;]{0,25}(cami|sender|recorregut|recorrido|ruta|cursa|carrera|corredors|participants)/))
+   ],
+   A:[
+    K('Truca al 112 si no pot caminar',1.5, [1,'r112'], [0.5,/no (pot|puede) (camin|andar|continuar|seguir|recolz|apoy)|no camina/]),
+    K("Avisa l'organització / professorat",1, or('prof',/organitzaci|organizacion|jutges|jueces|punt de control|avituallament/)),
+    K('Informa: turmell, dolor intens, inflamació, lloc',0.5, [0.25,/turmell|tobillo|luxaci|esquin/], [0.25,'lloc'])
+   ],
+   S:[
+    K('Controla el pols / circulació del peu',1, /pols|pulso|circulaci|sensibilitat|sensibilidad|coloraci|color\b|formigueig|hormigueo|temperatura|distal/),
+    K('Immobilitza el turmell (benes o materials improvisats)',1.5,'immob'),
+    K('Aplica fred a la zona',1,'fred'),
+    K('Vigila la inflamació; eleva el peu; repòs',0.5, /inflam|hinch|elev|alca\b|alzar|repos|descans/)
+   ] }
+];
+
+// ---------- Criteris generals (valen per a tots els casos): punts extra i penalització ----------
+const EXTRES = [
+  { label:"Guants / autoprotecció", pts:0.25, test:(t,a)=> C.guants.test(t) },
+  { label:"Signes vitals / vigila la víctima", pts:0.25, test:(t,a)=> C.vitals.test(t) },
+  { label:"Explica el PAS (Protegir, Avisar, Socórrer)", pts:0.25, test:(t,a)=> /\bpas\b/.test(t) && ((/protegi|proteger/.test(t)?1:0) + (/avisar|alertar/.test(t)?1:0) + (/socorr/.test(t)?1:0)) >= 2 },
+  { label:"Calma la víctima / aspectes psicològics", pts:0.25, test:(t,a)=> C.calmar.test(t) },
+  { label:"Informació completa al 112 (≥3 de: què, quan, on, qui, com)", pts:0.25, test:(t,a)=> {
+      const ta = a.avisar;
+      const n = [ /(ha (passat|ocorregut|succe\w+)|ha pasado|ha ocurrido|accident|descric\w+ (el )?(succes|suceso|cas|situaci)|explic\w+ (el |la )?(que|situaci|succes|suceso))/,
+                  /\bquan\b|\bhora\b|cuando (ha|ocurri)|fa (\d+|uns|pocs)|hace (\d+|unos|pocos)/,
+                  C.lloc,
+                  /edat|sexe|sexo|edad|\d+ anys|\d+ anos|malaltia|enfermedad|alergi|antecedent|historial|(home|dona|noi|noia|nen|nena|alumne|alumna|hombre|mujer|chico|chica|persona) de \d+/,
+                  /(com|como) (ha|esta|va|se)|estat (de la|actual)|estado (de la|actual)|inconscien|conscien|respira|pols|pulso|signes|signos|simptom|sintom|avaluaci|evaluaci|valoraci/
+                ].filter(r => r.test(ta)).length;
+      return n >= 3; } }
+];
+const EXTRES_MAX = 1;
+const MED_DONAR = /\b(dono|donar|doni|donem|donaria|dono-li|li dono|doy|dar|daria|le doy|administr\w*|ofereixo|ofrezco|ofrec\w+|proporciono|proporcion\w*)\b[^.;]{0,40}\b(pastill\w*|pastis|ibuprof\w*|paracetamol|analgesic\w*|antiinflamatori\w*|antiinflamatorio\w*|aspirin\w*|medicament\w*|medicacion|medicament|calmant\w*|antitermic\w*|antibiotic\w*|xarop|jarabe|dolor de cap)/;
+const MED_EXCL = /autoinjector|autoinyector|epinefrin|adrenalin|inhalador|ventolin|salbutamol|epipen|jext|habitual|propi|propia|el seu medicament|su medicacion/;
+const MED_NEG = /\b(no|mai|nunca|sense|sin|jamas|evit\w*|prohibit\w*|cap|ningun\w*)\b[^,]{0,45}\b(dono|donar|doni|donem|donaria|doy|dar|daria|administr\w*|ofer\w*|ofrec\w*|proporcion\w*)/;
+function detectaMedicacio(txt){
+  const t = norm(txt);
+  return t.split(/[.;!?]/).some(cl => MED_DONAR.test(cl) && !MED_EXCL.test(cl) && !MED_NEG.test(cl));
+}
+
+// ---------- Càlcul de la nota orientativa ----------
+const SECS = [['P','protegir','PROTEGIR'],['A','avisar','AVISAR'],['S','socorrer','SOCÓRRER']];
+function gradeCas(cas, answers){
+  const out = { P:0, A:0, S:0, det:[], extres:[], extra:0, penal:0, base:0, total:0 };
+  SECS.forEach(([k,sec]) => {
+    const t = norm(answers[sec]);
+    cas[k].forEach(c => {
+      let got = 0;
+      c.groups.forEach(g => { if (groupHit(g, t)) got += g.w; });
+      got = Math.round(Math.min(got, c.pts) * 100) / 100;
+      out[k] += got;
+      out.det.push({ sec:k, label:c.label, got:got, pts:c.pts });
+    });
+    out[k] = Math.round(out[k] * 100) / 100;
+  });
+  out.base = Math.round((out.P + out.A + out.S) * 100) / 100;
+  const full = norm([answers.protegir, answers.avisar, answers.socorrer].join('. '));
+  const a2 = { avisar: norm(answers.avisar) };
+  let ex = 0;
+  EXTRES.forEach(e => { let ok = false; try{ ok = e.test(full, a2); }catch(err){} out.extres.push({ label:e.label, got: ok ? e.pts : 0, pts:e.pts }); if (ok) ex += e.pts; });
+  out.extra = Math.min(EXTRES_MAX, ex);
+  out.penal = detectaMedicacio([answers.protegir, answers.avisar, answers.socorrer].join('. ')) ? 1 : 0;
+  const raw = out.base + out.extra - out.penal;
+  out.total = Math.max(0, Math.min(10, Math.round(raw * 2) / 2));
+  return out;
+}
+function fmtNota(n){ return String(n).replace('.', ','); }
+// Avís (no canvia la nota): text amb moltes paraules clau i quasi cap paraula de connexió
+const FN_WORDS = new Set('el la els les l un una uns unes de del dels d a al als en amb per pel pels que i o no si es se s y los las con por su sus lo le li ho hi em me te mi mis ens nos on com quan fins hasta cuando donde como pero per'.split(' '));
+function sospitos(txt){
+  const w = norm(txt).replace(/'/g,' ').match(/[a-z0-9]+/g) || [];
+  if (w.length < 12) return false;
+  const fn = w.filter(x => FN_WORDS.has(x)).length;
+  return fn / w.length < 0.12;
+}
+/* ===RUBRICS-END=== */
+
+const $ = id => document.getElementById(id);
+function slugify(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || 'resultat'; }
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+function lsRemove(k){ try{ localStorage.removeItem(k); }catch(e){} }
+function pad(n){ return String(n).padStart(2,'0'); }
+
+const QS = new URLSearchParams(location.search);
+const TEST_MODE = QS.has('test');
+const SLUG = slugify(CONFIG.examTitle);
+const COMPLETION_KEY = 'examen_completat_' + SLUG;
+const STATE_KEY = 'examen_estat_' + SLUG;
+const RETRY_KEY = 'examen_reintent_' + SLUG;
+const PENDING_KEY = 'examen_pendent_' + SLUG;
+const VIOLATION_MSG = "Avís: has sortit de la pantalla de l'examen. Si torna a passar, l'examen s'acabarà i s'entregarà automàticament.";
+if (TEST_MODE && QS.has('reset')){ lsRemove(STATE_KEY); lsRemove(RETRY_KEY); lsRemove(PENDING_KEY); }
+
+// ---------- estat ----------
+let state = null;            // {name, group, startedAt, casId, answers, violations, violationCount, warningPending, pasteTries, bigInserts}
+let examActive = false, finished = false, isRetry = false;
+let timerInterval = null, remainingSeconds = CONFIG.timeLimitMinutes * 60;
+let lastViolationTime = 0, manualFullscreenExit = false;
+let lastPayload = null;
+function examLabel(){ return isRetry ? CONFIG.examTitle + ' (reintent)' : CONFIG.examTitle; }
+function casById(id){ return CASOS.find(c => c.id === id); }
+
+const SCREENS = ['done','code','start','exam','finished'];
+function showScreen(name){ SCREENS.forEach(s => $('screen-'+s).classList.toggle('hidden', s !== name)); window.scrollTo(0,0); }
+
+function saveState(){ if (examActive && !finished && state) lsSet(STATE_KEY, JSON.stringify(state)); }
+function loadState(){
+  try{
+    const s = JSON.parse(lsGet(STATE_KEY));
+    if (s && s.startedAt && casById(s.casId)) return s;
+  }catch(e){}
+  return null;
+}
+
+// ---------- quadre de confirmació dins la pàgina (els diàlegs del navegador els bloquegen alguns visors) ----------
+let modalCb = null;
+function ask(msg, okLabel, cb){ $('modal-text').textContent = msg; $('modal-ok').textContent = okLabel; modalCb = cb; $('modal').classList.remove('hidden'); }
+$('modal-cancel').addEventListener('click', () => { $('modal').classList.add('hidden'); modalCb = null; });
+$('modal-ok').addEventListener('click', () => { $('modal').classList.add('hidden'); const cb = modalCb; modalCb = null; if (cb) cb(); });
+
+// ---------- pantalla inicial ----------
+function initialScreen(){
+  isRetry = !!lsGet(RETRY_KEY);
+  if (!TEST_MODE && lsGet(COMPLETION_KEY)){
+    lsRemove(STATE_KEY);
+    showScreen('done');
+    $('retry-box').classList.toggle('hidden', !CONFIG.retryCode);
+    return;
+  }
+  const saved = loadState();
+  if (saved){ resumeExam(saved); return; }
+  if (CONFIG.accessCode && !isRetry) showScreen('code'); else showScreen('start');
+}
+$('btn-code').addEventListener('click', () => {
+  if ($('input-code').value.trim() === String(CONFIG.accessCode)) showScreen('start');
+  else $('code-error').style.display = 'block';
+});
+$('input-code').addEventListener('keydown', e => { if (e.key === 'Enter') $('btn-code').click(); });
+
+function tryRetry(){
+  if (CONFIG.retryCode && $('input-retry').value.trim() === String(CONFIG.retryCode)){
+    lsRemove(COMPLETION_KEY); lsRemove(STATE_KEY); lsSet(RETRY_KEY, '1');
+    isRetry = true; showScreen('start');
+  } else $('retry-error').style.display = 'block';
+}
+$('btn-retry').addEventListener('click', tryRetry);
+$('input-retry').addEventListener('keydown', e => { if (e.key === 'Enter') tryRetry(); });
+
+$('start-title').textContent = CONFIG.examTitle;
+$('start-subtitle').textContent = CONFIG.instructions + ' Temps: ' + CONFIG.timeLimitMinutes + ' minuts.';
+$('exam-title-small').textContent = CONFIG.examTitle;
+if (TEST_MODE){
+  $('testbanner').textContent = "MODE PROVA: els resultats s'envien a la pestanya «Proves» del full, no a «" + CONFIG.modul + "». Amb ?cas=N hi pots triar el cas (1–" + CASOS.length + ").";
+  $('testbanner').classList.remove('hidden');
+}
+
+function pickCas(){
+  const f = parseInt(QS.get('cas'), 10);
+  if (TEST_MODE && f >= 1 && f <= CASOS.length) return f;
+  const n = CASOS.length;
+  if (window.crypto && crypto.getRandomValues){ const a = new Uint32Array(1); crypto.getRandomValues(a); return 1 + (a[0] % n); }
+  return 1 + Math.floor(Math.random() * n);
+}
+$('btn-start').addEventListener('click', () => {
+  const name = $('input-name').value.trim(), group = $('input-group').value.trim();
+  let ok = true;
+  $('input-name').style.borderColor = name ? '' : 'var(--red)'; if (!name) ok = false;
+  $('input-group').style.borderColor = group ? '' : 'var(--red)'; if (!group) ok = false;
+  $('start-error').classList.toggle('hidden', ok);
+  if (!ok) return;
+  state = { name:name, group:group, startedAt:Date.now(), casId:pickCas(), answers:{protegir:'',avisar:'',socorrer:''},
+            violations:[], violationCount:0, warningPending:false, pasteTries:0, bigInserts:0 };
+  enterFullscreenSafe();
+  beginExam();
+});
+
+// ---------- pantalla completa ----------
+function enterFullscreenSafe(){
+  const d = document.documentElement, req = d.requestFullscreen || d.webkitRequestFullscreen || d.msRequestFullscreen;
+  if (req){ try{ const p = req.call(d); if (p && p.catch) p.catch(()=>{}); }catch(e){} }
+}
+function exitFullscreenSafe(){
+  manualFullscreenExit = true;
+  const f = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+  if (f && (document.fullscreenElement || document.webkitFullscreenElement)){ try{ const p = f.call(document); if (p && p.catch) p.catch(()=>{}); }catch(e){} }
+}
+
+// ---------- examen ----------
+function beginExam(){
+  examActive = true; finished = false;
+  fillWatermark(); renderExam(); updateRemaining(); updateTimerDisplay();
+  clearInterval(timerInterval); timerInterval = setInterval(tickTimer, 1000);
+  saveState();
+}
+function resumeExam(s){
+  state = s;
+  state.answers = state.answers || {protegir:'',avisar:'',socorrer:''};
+  state.violations = state.violations || []; state.violationCount = state.violationCount || 0;
+  state.pasteTries = state.pasteTries || 0; state.bigInserts = state.bigInserts || 0;
+  examActive = true;
+  updateRemaining();
+  if (remainingSeconds <= 0){ fillWatermark(); renderExam(); finish("temps esgotat"); return; }
+  beginExam();
+  if (state.warningPending && state.violationCount < CONFIG.violationLimit) showViolationModal(VIOLATION_MSG);
+}
+function fillWatermark(){
+  const label = state.name + ' · ' + new Date().toLocaleDateString();
+  const wm = $('watermark'); wm.innerHTML = '';
+  for (let i = 0; i < 40; i++){ const sp = document.createElement('span'); sp.textContent = label; wm.appendChild(sp); }
+}
+function renderExam(){
+  const c = casById(state.casId);
+  const sc = $('scenario'); sc.innerHTML = '';
+  const h = document.createElement('h3'); h.textContent = c.titol; sc.appendChild(h);
+  function line(strong, txt){ if (!txt) return; const p = document.createElement('p'); const b = document.createElement('strong'); b.textContent = strong + ' '; p.appendChild(b); p.appendChild(document.createTextNode(txt)); sc.appendChild(p); }
+  if (c.desc){ const p = document.createElement('p'); p.textContent = c.desc; sc.appendChild(p); }
+  line('Indicis:', c.indicis);
+  line(c.desc ? 'Signes i símptomes:' : 'Signes:', c.signes);
+  const cons = document.createElement('p'); cons.className = 'cons';
+  cons.textContent = (c.nota ? c.nota + ' ' : '') + "A cada apartat, explica què faries i per què.";
+  sc.appendChild(cons);
+  const wrap = $('sections'); wrap.innerHTML = '';
+  SECTIONS.forEach(sec => {
+    const d = document.createElement('div'); d.className = 'section';
+    d.innerHTML = '<div class="label"></div><div class="hint"></div><textarea autocomplete="off" autocorrect="off" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"></textarea><div class="counter"></div>';
+    d.querySelector('.label').textContent = sec.label;
+    d.querySelector('.hint').textContent = sec.hint;
+    const ta = d.querySelector('textarea'), ct = d.querySelector('.counter');
+    ta.maxLength = CONFIG.maxChars;
+    ta.value = state.answers[sec.key] || '';
+    let prevLen = ta.value.length;
+    const upd = () => { ct.textContent = ta.value.length + ' / ' + CONFIG.maxChars; ct.classList.toggle('max', ta.value.length >= CONFIG.maxChars); };
+    // Qualsevol enganxat / arrossegament dins el quadre queda bloquejat
+    ta.addEventListener('beforeinput', e => {
+      if (!examActive) return;
+      if (/^insertFrom(Paste|Drop|Yank)/.test(e.inputType || '')){ e.preventDefault(); state.pasteTries++; saveState(); }
+    });
+    ta.addEventListener('input', e => {
+      const delta = ta.value.length - prevLen; prevLen = ta.value.length;
+      if (delta >= 40){ state.bigInserts++; }   // bloc gran de text d'un cop: possible enganxat (també el que entra pel teclat del mòbil)
+      state.answers[sec.key] = ta.value; saveState(); upd();
+    });
+    upd();
+    wrap.appendChild(d);
+  });
+  showScreen('exam');
+}
+
+function updateRemaining(){ remainingSeconds = CONFIG.timeLimitMinutes * 60 - Math.floor((Date.now() - state.startedAt) / 1000); }
+function tickTimer(){
+  updateRemaining(); updateTimerDisplay();
+  if (remainingSeconds <= 0){ clearInterval(timerInterval); finish("temps esgotat"); }
+}
+function updateTimerDisplay(){
+  const r = Math.max(0, remainingSeconds);
+  const t = $('timer'); t.textContent = Math.floor(r/60) + ':' + pad(r%60);
+  t.classList.toggle('low', remainingSeconds <= 60);
+}
+
+$('btn-finish').addEventListener('click', () => {
+  const buits = SECTIONS.filter(s => !(state.answers[s.key]||'').trim()).map(s => s.label);
+  const msg = buits.length ? 'Hi ha apartats sense resposta (' + buits.join(', ') + '). Vols entregar igualment?' : "Segur que vols finalitzar i entregar l'examen?";
+  ask(msg, 'Entrega', () => finish("entregat per l'alumne"));
+});
+
+// ---------- detecció de sortides ----------
+function handleViolation(reason){
+  if (!examActive || finished) return;
+  const now = Date.now();
+  if (now - lastViolationTime < 3000) return;
+  lastViolationTime = now;
+  state.violations.push({ reason:reason, time:new Date().toISOString() });
+  state.violationCount++;
+  if (state.violationCount < CONFIG.violationLimit){ state.warningPending = true; saveState(); showViolationModal(VIOLATION_MSG); }
+  if (state.violationCount >= CONFIG.violationLimit) finish("entregat automàticament per excés de sortides de pantalla");
+}
+function showViolationModal(msg){ $('violation-text').textContent = msg; $('violation-overlay').classList.remove('hidden'); }
+$('btn-violation-ok').addEventListener('click', () => { $('violation-overlay').classList.add('hidden'); if (state){ state.warningPending = false; saveState(); } });
+document.addEventListener('visibilitychange', () => {
+  if (!examActive) return;
+  if (document.hidden) handleViolation("un canvi de pestanya o d'aplicació");
+  else if (state.warningPending) showViolationModal(VIOLATION_MSG);
+});
+window.addEventListener('blur', () => { if (examActive) handleViolation("una pèrdua de focus de la finestra"); });
+function onFullscreenChange(){
+  const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+  if (examActive && !isFs && !manualFullscreenExit) handleViolation("una sortida de pantalla completa");
+  manualFullscreenExit = false;
+}
+document.addEventListener('fullscreenchange', onFullscreenChange);
+document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+
+// ---------- bloqueig de copiar / enganxar / arrossegar / menú contextual ----------
+document.addEventListener('paste', e => { if (examActive){ e.preventDefault(); if (state){ state.pasteTries++; saveState(); } } }, true);
+['contextmenu','copy','cut','drop','dragover','dragstart'].forEach(evt => {
+  document.addEventListener(evt, e => { if (examActive) e.preventDefault(); }, true);
+});
+document.addEventListener('keydown', e => {
+  if (!examActive) return;
+  const key = (e.key || '').toLowerCase();
+  const combo = (e.ctrlKey || e.metaKey) && ['c','v','x','u','s','p'].includes(key);
+  const shIns = (e.shiftKey && key === 'insert') || (e.ctrlKey && key === 'insert');
+  const devtools = (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(key)) || key === 'f12';
+  if (combo || shIns || devtools){ e.preventDefault(); if ((key === 'v' || key === 'insert') && state){ state.pasteTries++; saveState(); } }
+}, true);
+
+// ---------- entrega ----------
+function secText(key){ return (state.answers[key] || '').trim(); }
+function incidencies(){
+  const f = [];
+  if (state.pasteTries) f.push("intents d'enganxar bloquejats: " + state.pasteTries);
+  if (state.bigInserts) f.push("insercions grans de text d'un cop: " + state.bigInserts);
+  SECTIONS.forEach(s => { try{ if (sospitos(secText(s.key))) f.push("apartat " + s.label + " amb pocs mots de connexió (possible llista de paraules clau)"); }catch(e){} });
+  return f;
+}
+function buildStudentSummary(reason, nota){
+  const c = casById(state.casId), d = new Date();
+  const L = [
+    'EXAMEN — ' + examLabel(),
+    'Alumne: ' + state.name + ' | Curs: ' + state.group,
+    'Data: ' + d.toLocaleDateString('ca-ES') + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + " | Motiu d'entrega: " + reason,
+  ];
+  if (CONFIG.showOrientativeGrade && nota) L.push('Nota orientativa automàtica: ' + fmtNota(nota.total) + ' / 10 (pendent de revisió del professorat)');
+  L.push('', 'CAS ' + c.id + ': ' + c.titol);
+  if (c.desc) L.push(c.desc);
+  if (c.indicis) L.push('Indicis: ' + c.indicis);
+  L.push((c.desc ? 'Signes i símptomes: ' : 'Signes: ') + c.signes, '');
+  SECTIONS.forEach(s => { L.push('[' + s.label + ']'); L.push(secText(s.key) || '(sense resposta)'); L.push(''); });
+  return L.join('\n');
+}
+function buildSheetDetail(reason, nota){
+  const c = casById(state.casId), inc = incidencies();
+  const L = ['CAS ' + c.id + ': ' + c.titol];
+  if (nota) L.push('AUTO: P ' + fmtNota(nota.P) + '/3 · A ' + fmtNota(nota.A) + '/3 · S ' + fmtNota(nota.S) + '/4 · extres +' + fmtNota(nota.extra) + ' · penalització -' + fmtNota(nota.penal) + ' → ' + fmtNota(nota.total) + '/10');
+  else L.push('AUTO: no s\'ha pogut calcular la nota orientativa');
+  if (inc.length) L.push('INCIDÈNCIES: ' + inc.join('; '));
+  L.push('');
+  SECTIONS.forEach(s => { L.push('[' + s.label + '] ' + (secText(s.key) || '(sense resposta)')); });
+  return L.join('\n');
+}
+
+function finish(reason){
+  if (finished) return;
+  finished = true; examActive = false;
+  $('violation-overlay').classList.add('hidden'); $('modal').classList.add('hidden'); modalCb = null;
+  clearInterval(timerInterval);
+  lsSet(COMPLETION_KEY, '1'); lsRemove(STATE_KEY); lsRemove(RETRY_KEY);
+  exitFullscreenSafe();
+  // La nota orientativa mai pot impedir l'entrega: si falla, s'entrega igualment sense nota.
+  let nota = null;
+  try{ nota = gradeCas(casById(state.casId), state.answers); }catch(e){ nota = null; }
+  const summary = buildStudentSummary(reason, nota);
+  showFinished(summary, nota);
+  lastPayload = {
+    examen: examLabel(), modul: TEST_MODE ? 'Proves' : (CONFIG.modul || ''), nombre: state.name, grupo: state.group,
+    nota: nota ? 'orientativa ' + fmtNota(nota.total) + ' / 10 (pendent de revisió)' : 'pendent de revisió',
+    avisos: String(state.violationCount), motivo: reason, respostes: buildSheetDetail(reason, nota)
+  };
+  lsSet(PENDING_KEY, JSON.stringify(lastPayload));
+  sendPayload();
+}
+
+function showFinished(summary, nota){
+  $('finished-sub').textContent = 'Gràcies, ' + state.name + ". Les teves respostes s'han entregat.";
+  $('summary-box').value = summary;
+  $('copy-ok').classList.add('hidden');
+  const show = CONFIG.showOrientativeGrade && nota;
+  $('orient').classList.toggle('hidden', !show);
+  if (show){
+    $('orient-grade').textContent = fmtNota(nota.total) + ' / 10';
+    const ul = $('orient-det'); ul.innerHTML = '';
+    const detall = TEST_MODE && QS.has('detall');   // només per al professorat: obre l'examen amb ?test&detall
+    ul.classList.toggle('hidden', !detall);
+    if (detall){
+      nota.det.forEach(d => { const li = document.createElement('li'); li.textContent = (d.got >= d.pts ? '✔ ' : d.got > 0 ? '◐ ' : '✘ ') + d.sec + ' · ' + d.label + ' — ' + fmtNota(d.got) + ' / ' + fmtNota(d.pts); ul.appendChild(li); });
+      nota.extres.forEach(d => { const li = document.createElement('li'); li.textContent = (d.got ? '✔ ' : '✘ ') + 'extra · ' + d.label + ' — ' + fmtNota(d.got) + ' / ' + fmtNota(d.pts); ul.appendChild(li); });
+      const li = document.createElement('li'); li.textContent = 'Extres aplicats: +' + fmtNota(nota.extra) + ' (màx. +1) · Penalització per medicació: -' + fmtNota(nota.penal); ul.appendChild(li);
+      incidencies().forEach(t => { const l2 = document.createElement('li'); l2.textContent = '⚠ ' + t; ul.appendChild(l2); });
+    }
+  }
+  showScreen('finished');
+}
+
+// ---------- enviament al full de càlcul (POST: les respostes llargues no caben en una adreça) ----------
+function postPayload(p){
+  return fetch(CONFIG.appsScriptUrl, { method:'POST', mode:'no-cors', body:new URLSearchParams(p) });
+}
+function sendPayload(){
+  const st = $('finished-status'), btn = $('btn-resend');
+  btn.classList.add('hidden');
+  if (!CONFIG.appsScriptUrl){ st.textContent = 'No hi ha connexió configurada. Usa «Veure les meves respostes» per enviar-ho tu mateix/a.'; return; }
+  st.textContent = 'Enviant el resultat…';
+  postPayload(lastPayload).then(() => {
+    lsRemove(PENDING_KEY);
+    st.textContent = 'Resultat enviat correctament. Ja pots tancar aquesta finestra.';
+  }).catch(() => {
+    st.textContent = "No s'ha pogut enviar (¿sense connexió?). Torna-ho a provar quan tinguis connexió i, si no funciona, avisa el teu professor/a.";
+    btn.classList.remove('hidden');
+  });
+}
+$('btn-resend').addEventListener('click', sendPayload);
+// Si un enviament anterior no va arribar, es reintenta en silenci en tornar a obrir la pàgina.
+function flushPending(){
+  const raw = lsGet(PENDING_KEY);
+  if (!raw || !CONFIG.appsScriptUrl || examActive) return;
+  try{ const p = JSON.parse(raw); postPayload(p).then(() => lsRemove(PENDING_KEY)).catch(()=>{}); }catch(e){ lsRemove(PENDING_KEY); }
+}
+
+$('btn-copy').addEventListener('click', async () => {
+  const txt = $('summary-box').value; let ok = false;
+  try{ await navigator.clipboard.writeText(txt); ok = true; }catch(e){}
+  if (!ok){ const ta = $('summary-box'); ta.removeAttribute('readonly'); ta.focus(); ta.select(); try{ ok = document.execCommand('copy'); }catch(e){} ta.setAttribute('readonly',''); }
+  $('copy-ok').textContent = ok ? 'Copiat.' : "No s'ha pogut copiar automàticament: selecciona el text del quadre i copia'l.";
+  $('copy-ok').classList.remove('hidden');
+});
+$('btn-download').addEventListener('click', () => {
+  const blob = new Blob([$('summary-box').value], { type:'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'respostes_' + slugify(state ? state.name : 'alumne') + '.txt';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+});
+
+initialScreen();
+flushPending();
+</script>
+</body>
+</html>
