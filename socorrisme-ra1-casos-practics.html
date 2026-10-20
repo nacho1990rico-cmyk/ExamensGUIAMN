@@ -950,6 +950,13 @@ function buildSheetDetail(reason, nota){
   if (inc.length) L.push('INCIDÈNCIES: ' + inc.join('; '));
   L.push('');
   SECTIONS.forEach(s => { L.push('[' + s.label + '] ' + (secText(s.key) || '(sense resposta)')); });
+  if (nota){
+    // Detall criteri a criteri: serveix per saber per què surt cada nota
+    L.push('', 'DETALL DE LA NOTA ORIENTATIVA (✔ complet · ◐ parcial · ✘ no detectat):');
+    nota.det.forEach(d => L.push((d.got >= d.pts ? '✔ ' : d.got > 0 ? '◐ ' : '✘ ') + d.sec + ' · ' + d.label + ' — ' + fmtNota(d.got) + '/' + fmtNota(d.pts)));
+    nota.extres.forEach(d => L.push((d.got ? '✔ ' : '✘ ') + 'extra · ' + d.label + ' — ' + fmtNota(d.got) + '/' + fmtNota(d.pts)));
+    L.push('Extres aplicats: +' + fmtNota(nota.extra) + ' (màx. +1) · Penalització per medicació: -' + fmtNota(nota.penal));
+  }
   return L.join('\n');
 }
 
