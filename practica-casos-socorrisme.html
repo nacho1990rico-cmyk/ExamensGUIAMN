@@ -194,6 +194,17 @@ const C = {
   secund: /secundari|exploraci|explorar|examen|examin|cap a peus|de pies a cabeza|lesions ocultes|lesiones ocultas|altres lesions|otras lesiones|revis/,
   lesio: /hematoma|morat|cardenal|ferid|herid|fractura|deformit|lesion|golpe|cop\b|inflam|contusi/
 };
+// Seguiment periòdic o continu de la víctima: «vaig revisant cada dos minuts», «no el perdo de vista», «estaré pendent»...
+const VERB_SEG = '(revis|comprov|control|mir|vigil|observ|valor|avalu|monitor|segui|atent|pendent)';
+const TEMP_SEG = "(cada (\\w+ ){0,2}(minut|minuts|minutos|segons|segundos|moment|momento|poc)|cada cop|cada vegada|periodic\\w*|regularment|regularmente|de tant en tant|de vez en cuando|a intervals|constantment|constantemente|continuament|continuamente|en tot moment|a tot moment|tot el temps|durant tota l'estona|todo el tiempo|en todo momento)";
+C.seguim = new RegExp([
+  TEMP_SEG + '[^.;]{0,40}' + VERB_SEG,
+  VERB_SEG + '\\w*[^.;]{0,40}' + TEMP_SEG,
+  '(aniria|anire|vaig|vull|voldria|torno|tornaria|continuo|continuaria|seguiria|seguire|vuelvo|volveria|iria|voy)\\s+(\\w+\\s+){0,2}(revisant|revisar|comprovant|comprovar|controlant|controlar|mirant|mirar|vigilant|vigilar|observant|observar|monitoritzant|monitoritzar|revisando|comprobando|controlando|mirando|vigilando|observando)',
+  '(estic|estaria|estare|estoy)\\s+(pendent|atent|atenta|pendiente|atento)',
+  "no (el|la) (deixo|deixaria|dejo|dejaria) (sol|sola|solo)|sense deixar[- ](lo|la) sol|no (el|la) perdo de vista|no le quito (el )?ojo|no (el|la) deixo de mirar",
+  'revis\\w*[^.;]{0,30}(estat|estado|respiraci|pols|pulso|consci|constants|signes|signos|victima|ferit|accidentat|alumne|alumno|evoluci)'
+].join('|'));
 function or(){
   return new RegExp(Array.prototype.map.call(arguments, a => (typeof a === 'string' ? C[a].source : a.source)).join('|'));
 }
@@ -239,7 +250,7 @@ const CASOS = [
    A:[
     K('Valora si cal trucar al 112 segons la gravetat', 1, or('r112',/no cal (trucar|avisar)|no (es )?(cal|necessari|necesario)[^.;]{0,25}(trucar|llamar|ambulanc|112)|si (es|ha estat|fos|sigui) (greu|grave)|segons (la )?gravetat|segun (la )?gravedad|depenent|depend|en funcio de/)),
     K("Informa de l'estat (caiguda, consciència, dolor, lesions)",1, /caigu|cai(g|da)|dolor|consci|crid|lesion|fractura|ferid|herid/),
-    K('Si és lleu: la deixa reposar i la monitoritza / avisa algú (família, professorat)',1, or(/repos|descans|monitor|vigil|segui|observ/, 'prof', /familiar|famili|marit|marido|parella|pareja|veï|vecino/))
+    K('Si és lleu: la deixa reposar i la monitoritza / avisa algú (família, professorat)',1, or(/repos|descans|monitor|vigil|segui|observ/, 'seguim', 'prof', /familiar|famili|marit|marido|parella|pareja|veï|vecino/))
    ],
    S:[
     K('Valora la consciència i la calma (parla amb ella, on li fa mal)',1.5, [0.75,'consc'], [0.75, or('calmar',/dolor|on (li )?fa mal|donde (le )?duele|pregunt/)]),
@@ -262,7 +273,7 @@ const CASOS = [
     K('Obre la via aèria (front-barbeta)',1,'viaAeria'),
     K('Comprova la respiració',1,'respira'),
     K('Si no respira: RCP immediata',1,'rcp'),
-    K('Si respira amb dificultat: PLS i monitoritza',0.5, [0.25,'pls'], [0.25,/monitor|vigil|control|observ|segui|vitals|constants/]),
+    K('Si respira amb dificultat: PLS i monitoritza',0.5, [0.25,'pls'], [0.25, or(/monitor|vigil|control|observ|segui|vitals|constants/, 'seguim')]),
     K('Evita la hipotèrmia (mantes, roba seca)',0.5,'calor')
    ] },
 
@@ -281,7 +292,7 @@ const CASOS = [
     K('Controla la ferida: pressió amb drap net / apòsit estèril',1.5, [0.75,'hemorr'], [0.75, or('apositiu','neteja',/\bnet\b|\bneta\b|esteril/)]),
     K('Avalua la consciència i si respon coherentment',1, [0.6,'consc'], [0.4,/coheren|orient|confus|parla|habla|\bnom\b|nombre|on (es|esta)|donde|data|fecha/]),
     K('No permet que es mogui: assegut o recolzat',1, /assegut|sentad|recolz|apoy|no (el |li )?(deix|permet|dej|permit)|que no es (mogui|mueva)|quiet|repos|reposo|estirat|tumbad|ajagu/),
-    K('Monitoritza fins que arribi ajuda',0.5, or('vitals','esperar'))
+    K('Monitoritza fins que arribi ajuda',0.5, or('vitals','seguim','esperar'))
    ] },
 
  { id:5, titol:"Apunyalada a la sortida de discoteca", indicis:'Ganivet clavat.', signes:'Inconscient, pols accelerat i dèbil, ferida oberta.',
@@ -298,7 +309,7 @@ const CASOS = [
     K('Controla la hemorràgia sense moure el ganivet (pressió al voltant)',1.5, [0.75,'hemorr'], [0.75,/al voltant|alrededor|voltant|sense (moure|treure|tocar)|sin (mover|sacar|tocar)|al costat|a los lados/]),
     K('Comprova la via aèria i la respiració',1, [0.5,'viaAeria'], [0.5,'respira']),
     K('Si respira: posició supina i ferida immòbil',0.75, /supin|d'esquena|de espaldas|boca amunt|boca arriba|estirat|tumbad|horitzontal|horizontal|immob|inmovil/),
-    K('Monitoritza signes vitals fins que arribi ajuda',0.75, [0.5,'vitals'], [0.25,'esperar'])
+    K('Monitoritza signes vitals fins que arribi ajuda',0.75, [0.5, or('vitals','seguim')], [0.25,'esperar'])
    ] },
 
  { id:6, titol:"Home estirat al llit (sobredosi de pastilles)", indicis:'Paquet de pastilles tirat pel terra i pel llit.', signes:'Inconscient, pols accelerat i dèbil, pupil·les dilatades.',
@@ -316,7 +327,7 @@ const CASOS = [
     K('Comprova la via aèria (front-barbeta)',1,'viaAeria'),
     K('Si no respira: RCP',1,'rcp'),
     K("Si respira: PLS (risc d'aspiració en vòmits)",1, [0.7,'pls'], [0.3,/vomit|aspira|broncoaspir|ofeg|ahog/]),
-    K('Monitoritza constantment respiració i pols fins que arribi ajuda',1, [0.5,or('vitals','pols','respira')], [0.5, or(/monitor|vigil|control|constant/, 'esperar')])
+    K('Monitoritza constantment respiració i pols fins que arribi ajuda',1, [0.5,or('vitals','pols','respira')], [0.5, or(/monitor|vigil|control|constant/, 'seguim', 'esperar')])
    ] },
 
  { id:7, titol:"Accident d’escalada: caiguda d'un escalador en una via d’alta muntanya", desc:"Un alumne cau mentre escalava i queda penjat d’una corda en una via a uns 15 metres del terra.", signes:'Inconscient, sagnat visible a la cama.', nota:"Explica l’actuació quan ja han baixat la víctima.",
@@ -403,7 +414,7 @@ const CASOS = [
    S:[
     K('Valoració primària (ABC): prioritza la respiració',1, or('respira','viaAeria','abc')),
     K("L'ajuda a utilitzar el seu inhalador",1.5, [1,/inhalador|inhalacion|ventolin|salbutamol|puff|broncodilat|medicaci\w+ (habitual|propia)|seu medicament|su medicaci/], [0.5,/ajud|ayud|facilit|busc|agafar|coger|portar|trobar|encontr|agita|sacsej|cambra|camara/]),
-    K('Posició semiasseguda i vigilància constant',1, [0.7,/semi.?assegu|semi.?sentad|incorpor|assegut|sentad|posicio (comoda|de confort|tripode)|recolzat|apoyad/], [0.3,/vigil|monitor|control|observ|segui/]),
+    K('Posició semiasseguda i vigilància constant',1, [0.7,/semi.?assegu|semi.?sentad|incorpor|assegut|sentad|posicio (comoda|de confort|tripode)|recolzat|apoyad/], [0.3, or(/vigil|monitor|control|observ|segui/, 'seguim')]),
     K('Calma i suport psicològic (valoració secundària)',0.5,'calmar')
    ] },
 
@@ -459,7 +470,7 @@ const CASOS = [
     K("Rehidrata amb petites quantitats d'aigua (hidratació controlada)",1.5, [1, 'hidrat', NEG_DONAR], [0.5,/poc a poc|petit|sorb|trago|pocs|control|gradual|glops|pequen|poco a poco/]),
     K('Aigua freda al front / refresca',0.75, /fred|fria\b|frio\b|mullar|mojar|refresc|front\b|frente|nuca|coll\b|cuello|panys|panos|pano\b|tovallola|toalla/),
     K('Controla consciència, pols i respiració',1, or('consc','pols','respira')),
-    K('Monitoritza signes vitals / valoració secundària',0.75, or('vitals',/temperatura|secundari/))
+    K('Monitoritza signes vitals / valoració secundària',0.75, or('vitals','seguim',/temperatura|secundari/))
    ] },
 
  { id:15, titol:"Al·lèrgia a una picada d'insecte durant una ruta de BTT", desc:"Un alumne és picat per una vespa i comença a tenir dificultats respiratòries.", signes:'Inflor al coll, dificultat per respirar.',
@@ -476,7 +487,7 @@ const CASOS = [
    S:[
     K('Valora la via aèria (inflor)',1, or('viaAeria','respira','abc')),
     K("Administra o ajuda a administrar l'autoinjector d'epinefrina",1.5, [1,/autoinjector|autoinyector|epinefrin|adrenalin|epipen|jext|altellus|auto-?injector/], [0.5,/ajud|ayud|administr|punx|pinch|clav|cuixa|muslo|part externa|lateral/]),
-    K('Monitoritza fins que arribin els serveis mèdics',0.75, or('vitals','esperar',/monitor|vigil/)),
+    K('Monitoritza fins que arribin els serveis mèdics',0.75, or('vitals','seguim','esperar',/monitor|vigil/)),
     K('Valoració secundària: altres reaccions, confort',0.75, or('calmar',/secundari|reaccion|urticaria|picor/))
    ] },
 
@@ -494,7 +505,7 @@ const CASOS = [
     K('Valoració primària: respiració i signes d’hipotèrmia avançada',1, or('respira','consc','abc',/hipoterm|avancad|avanzad/)),
     K('Escalfa progressivament (mantes, roba seca)',1.5, [0.75,'calor'], [0.75,/progressiv|gradual|poc a poc|poco a poco|lentament|lentamente|mantes|mantas|roba seca|ropa seca/]),
     K('Dóna begudes calentes (si és conscient)',0.75, /beguda|bebida|infusi|brou|caldo|xocolat|chocolate|te calent|te caliente|liquids? calent|liquido caliente/),
-    K('Monitoritza signes vitals; reflexió sobre la roba adequada',0.75, [0.5,'vitals'], [0.25,/roba adequada|ropa adecuada|prevenc|prevenci|importancia/])
+    K('Monitoritza signes vitals; reflexió sobre la roba adequada',0.75, [0.5, or('vitals','seguim')], [0.25,/roba adequada|ropa adecuada|prevenc|prevenci|importancia/])
    ] },
 
  { id:17, titol:"Fractura de clavícula durant una caiguda a cavall", desc:"Un alumne cau d’un cavall i es queixa de dolor intens a l’espatlla.", signes:"Deformitat a l'espatlla, dolor intens.",
@@ -511,7 +522,7 @@ const CASOS = [
     K('Controla respiració i signes de xoc',1.25, [0.6,'respira'], [0.65,/xoc|shock|pols|pulso|circulaci|pal\b|suor|sudor/]),
     K('Immobilitza el braç (cabestrell improvisat)',1.5,'immob'),
     K('Assegura que no hi ha altres lesions (valoració secundària)',0.75, /altres lesions|otras lesiones|secundari|exploraci|explorar|examen|cap a peus|descart|revis/),
-    K('Monitoritza i manipula amb cura',0.5, /monitor|vigil|control|cura\b|cuidado|suau|suave|brusc|precauci/)
+    K('Monitoritza i manipula amb cura',0.5, or(/monitor|vigil|control|cura\b|cuidado|suau|suave|brusc|precauci/, 'seguim'))
    ] },
 
  { id:18, titol:"Ferida per tall durant una activitat de supervivència", desc:"Un alumne es talla mentre utilitza un ganivet en una activitat de supervivència.", signes:'Tall profund a la mà, sagnat important.',
@@ -590,7 +601,7 @@ const CASOS = [
 // ---------- Criteris generals (valen per a tots els casos): punts extra i penalització ----------
 const EXTRES = [
   { label:"Guants / autoprotecció", pts:0.25, test:(t,a)=> C.guants.test(t) },
-  { label:"Signes vitals / vigila la víctima", pts:0.25, test:(t,a)=> C.vitals.test(t) },
+  { label:"Signes vitals / vigila la víctima", pts:0.25, test:(t,a)=> C.vitals.test(t) || C.seguim.test(t) },
   { label:"Explica el PAS (Protegir, Avisar, Socórrer)", pts:0.25, test:(t,a)=> /\bpas\b/.test(t) && ((/protegi|proteger/.test(t)?1:0) + (/avisar|alertar/.test(t)?1:0) + (/socorr/.test(t)?1:0)) >= 2 },
   { label:"Calma la víctima / aspectes psicològics", pts:0.25, test:(t,a)=> C.calmar.test(t) },
   { label:"Informació completa al 112 (≥3 de: què, quan, on, qui, com)", pts:0.25, test:(t,a)=> {
