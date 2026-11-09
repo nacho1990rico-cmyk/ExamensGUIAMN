@@ -209,13 +209,14 @@ const CONFIG = {
     entryMotivo: "entry.799380067",
     entryExamen: "entry.370173710"
   },
-  instructions: "Per cada resposta correcta se suma 1 punt. Per cada incorrecta es resta 0,33 punts. Per cada resposta no contestada ni suma ni resta, són 0 punts. Hi ha una pregunta en què totes les respostes són correctes.",
+  instructions: "Cada resposta correcta suma 1 punt. Cada resposta incorrecta resta 0,5 punts. Les preguntes sense contestar no sumen ni resten. La nota final es calcula sobre 10.",
   timeLimitMinutes: 30,                        // Duración del examen en minutos
   violationLimit: 2,                           // 1 aviso, y a la siguiente salida se entrega solo
   showScoreToStudent: true,                    // true = el alumno ve su nota al entregar
 
   // Puntos por acierto, por fallo y por pregunta en blanco
-  scoring: { correct: 1, incorrect: -0.33, blank: 0 },
+  scoring: { correct: 1, incorrect: -0.5, blank: 0 },
+  scoreScale: 10,                              // la nota final es mostra i s'envia sobre aquest valor (ex. 10). Mai baixa de 0.
 
   questions: [
     {
@@ -267,7 +268,7 @@ const CONFIG = {
       correct: 1
     },
     {
-      text: "Durant l'avaluació primària si la persona no respon, però respira normalment. Què faries?",
+      text: "En cas d'accident traumàtic, què faries si la víctima no respon, però respira amb normalitat?",
       options: [
         "Trucar al 112 i realitzar compressions toràciques",
         "Posar la víctima en PLS",
@@ -311,8 +312,12 @@ const CONFIG = {
     },
     {
       text: "Dins del decàleg del socorrisme trobem…",
-      options: ["Ha d'actuar amb tranquil·litat i rapidesa", "Mantenir a la víctima calenta", "Moure'l amb precaució"],
-      correct: [0, 1, 2]
+      options: [
+        "Hidratar sempre a la víctima, ja que l'aigua va bé per recuperar la consciència.",
+        "No trucar al 112 ni actuar si no sé què fer.",
+        "Mantenir a la víctima calenta."
+      ],
+      correct: 2
     },
     {
       text: "A la farmaciola es distingeix el material de…",
@@ -335,7 +340,7 @@ const CONFIG = {
         "La coloració de la pell vermella es pot relacionar amb una hipertèrmia",
         "Una Pressió Arterial normal és de: 129 / 80mmHg"
       ],
-      correct: 0
+      correct: 2
     },
     {
       text: "La B de l'ABC és per comprovar:",
@@ -683,13 +688,21 @@ function maxPossibleScore(){
   const s = CONFIG.scoring || { correct: 1 };
   return Math.round(examQuestions.length * s.correct * 100) / 100;
 }
+// Nota final: els punts directes es passen a la escala de CONFIG.scoreScale (ex. 10) i no baixen de 0.
+function finalGrade(){
+  const raw = computeScore(), rawMax = maxPossibleScore();
+  const scale = CONFIG.scoreScale || rawMax;
+  const score = rawMax > 0 ? Math.max(0, Math.round(raw / rawMax * scale * 100) / 100) : 0;
+  return { score, total: scale };
+}
+function fmtNota(n){ return String(n).replace('.', ','); }
 
 function buildSummary(score, total, reason){
   const lines = [
     `Examen: ${examLabel()}`,
     `Alumno/a: ${studentName}`,
     studentGroup ? `Grupo: ${studentGroup}` : null,
-    `Nota: ${score} / ${total}`,
+    `Nota: ${fmtNota(score)} / ${total}`,
     `Avisos de salida de pantalla: ${violationCount}`,
     `Motivo de entrega: ${reason}`,
     `Fecha: ${new Date().toLocaleString()}`
@@ -708,13 +721,12 @@ function submitExam(reason){
   clearInterval(timerInterval);
   exitFullscreenSafe();
 
-  const score = computeScore();
-  const total = maxPossibleScore();
+  const { score, total } = finalGrade();
   const summary = buildSummary(score, total, reason);
 
   showScreen('finished');
   let msg = `Gracias, ${studentName}. Tu examen ha terminado.`;
-  if(CONFIG.showScoreToStudent) msg += ` Nota: ${score} de ${total}.`;
+  if(CONFIG.showScoreToStudent) msg += ` Nota: ${fmtNota(score)} de ${total}.`;
   if(reason !== "entregado por el alumno") msg += ` (Motivo de entrega: ${reason}.)`;
   el('finished-message').textContent = msg;
   el('summary-box').value = summary;
@@ -744,7 +756,7 @@ function sendResultAutomatically(score, total, reason){
     modul: CONFIG.modul || '',
     nombre: studentName,
     grupo: studentGroup,
-    nota: `${score} / ${total}`,
+    nota: `${fmtNota(score)} / ${total}`,
     avisos: String(violationCount),
     motivo: reason,
     respostes: buildAnswerDetail()
