@@ -35,11 +35,11 @@
   h1{ font-family:var(--serif); font-size:1.6rem; margin:0 0 4px; font-weight:600; }
   .subtitle{ color:var(--ink-soft); font-size:0.92rem; margin:0 0 24px; line-height:1.5;}
   label{ display:block; font-size:0.85rem; color:var(--ink-soft); margin-bottom:6px; }
-  input[type=text]{
+  input[type=text], select#input-group{
     width:100%; padding:10px 12px; font-size:1rem; font-family:var(--sans);
     border:1px solid var(--line); background:#fff; color:var(--ink); margin-bottom:18px;
   }
-  input[type=text]:focus{ outline:2px solid var(--teal); outline-offset:1px; }
+  input[type=text]:focus, select#input-group:focus{ outline:2px solid var(--teal); outline-offset:1px; }
   textarea{
     width:100%; font-family:var(--sans); font-size:0.85rem; padding:10px 12px;
     border:1px solid var(--line); resize:none; margin-bottom:16px; color:var(--ink); background:#fafafa;
@@ -142,7 +142,12 @@
     <label for="input-name">Nom i cognoms</label>
     <input type="text" id="input-name" placeholder="Ex: Marta Garcia López" autocomplete="off">
     <label for="input-group">Curs</label>
-    <input type="text" id="input-group" placeholder="Ex: GES2A" autocomplete="off">
+    <select id="input-group">
+      <option value="">Selecciona el teu curs</option>
+      <option>2A GUIAMN</option>
+      <option>2B GUIAMN</option>
+      <option>2C GUIAMN</option>
+    </select>
     <button id="btn-start">Empezar examen</button>
   </div>
 
